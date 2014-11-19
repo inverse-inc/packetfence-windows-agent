@@ -1,0 +1,19 @@
+Packetfence-Windows-Agent NEWS
+================
+
+Project homepage: https://www.packetfence.org/
+
+Please report bugs to: http://www.packetfence.org/bugs/
+
+Interested in contributing to the project? http://www.packetfence.org/support/community.html
+
+This is a list of noteworthy changes across releases.
+For more details and developer visible changes see the ChangeLog file.
+
+Version 1.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The windows agent allow you to connect to packetfence and autoconfigure a Wifi network which can have a hidden SSID, after launch and configure, the client only need to login with his credentials. 
+
+Works on windows vista, 7 and 8.
+
