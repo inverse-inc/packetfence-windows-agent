@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 import plistlib as PL
 
 def parsing():
-	WINDOWSXML = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+	WINDOWSoneX = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 		<name></name>
 		<SSIDConfig>
 			<SSID>
@@ -24,6 +24,11 @@ def parsing():
 					<encryption>AES</encryption>
 					<useOneX>true</useOneX>
 				</authEncryption>
+				<sharedKey>
+					<keyType>passPhrase</keyType>
+					<protected>false</protected>
+					<keyMaterial></keyMaterial>
+				</sharedKey>
 				<OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
 					<cacheUserData>true</cacheUserData>
 					<authMode>user</authMode>
@@ -71,26 +76,89 @@ def parsing():
 		</MSM>
 	</WLANProfile>
 	"""
-
+	WINDOWSopen = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+		<name></name>
+		<SSIDConfig>
+			<SSID>
+				<hex></hex>
+				<name></name>
+			</SSID>
+			<nonBroadcast>false</nonBroadcast>
+		</SSIDConfig>
+		<connectionType>ESS</connectionType>
+		<connectionMode>manual</connectionMode>
+		<autoSwitch>false</autoSwitch>
+		<MSM>
+			<security>
+				<authEncryption>
+					<authentication>WPA2PSK</authentication>
+					<encryption>AES</encryption>
+					<useOneX>false</useOneX>
+					<FIPSMode xmlns="http://www.microsoft.com/networking/WLAN/profile/v2">false</FIPSMode>
+				</authEncryption>
+				<sharedKey>
+					<keyType>passPhrase</keyType>
+					<protected>false</protected>
+					<keyMaterial>Inverseforthewin!</keyMaterial>
+				</sharedKey>
+			</security>
+		</MSM>
+	</WLANProfile>"""
+	
 	#Download mobileconfig file, convert to str
 	origin = U2.urlopen("https://packetfence.org/wireless-profile.mobileconfig") 
 	data = origin.read()
-
-	#Get data from the mobileconfig file, username, ssidname
+	
+	#Get data from the mobileconfig file, username, ssidname, security type, password 
 	r = PL.readPlistFromString(data)
-	un = r["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
 	ssidn = r["PayloadContent"][0]["SSID_STR"]
+	sec = r["PayloadContent"][0]["EncryptionType"]
+	profile = r["PayloadDisplayName"]
+	passk = r["PayloadContent"][0]["Password"]
+	#certn = r["PayloadContent"][1]["PayloadCertificateFileName"]
+	#certd = r["PayloadContent"][1]["PayloadContent"]
+	#certt = r["PayloadContent"][1]["PayloadType"]
+	
+	if "EAPClientConfiguration" in r:
+		un = r["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
+		eap = r["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
+		root = ET.fromstring(WINDOWSoneX)
+		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+		if sec == "WPA":
+			sec = "WPA2"
+			enc.text = "AES"
+		elif sec == "WEP":
+			sec = "WEP"
+			enc.text = "WEP"
+	else:
+		root = ET.fromstring(WINDOWSopen)
+		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+		if sec == "WEP":
+			sec = "WEP"
+			enc.text = "WEP"
+		elif sec == "WPA":
+			sec = "WPA2PSK"
+			enc.text = "AES"
+		else:
+			sec = "open"
+			enc.text = "none"
 
-	root = ET.fromstring(WINDOWSXML)  
+	
 	#Search ssid name, username in wintemplate and remplace it
 	nname = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
-	nname.text = ssidn
+	nname.text = profile
 	ssid = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
 	name = ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
 	name.text = ssidn
 	hexname = ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
-	hexname.text = "ssidn".encode("hex")  
-
+	hexname.text = ssidn.encode("hex")  
+	secf = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
+	sect = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
+	sect.text = sec
+	passw = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
+	passw.text = passk
+	
+	
 	#Get the path to temp folder(right to write)
 	pa = os.getenv("tmp")
 	file = os.path.join(pa, "template-out.xml")
@@ -125,4 +193,3 @@ def parsing():
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
 #  USA.
-
