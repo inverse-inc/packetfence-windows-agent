@@ -6,7 +6,11 @@ import plistlib as PL
 import re
 
 def parsing():
+<<<<<<< HEAD
 	WINDOWSpeap = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+=======
+	WINDOWSoneX = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+>>>>>>> 61c273543773a4040ee8bcce26abf104d1293371
 		<name></name>
 		<SSIDConfig>
 			<SSID>
@@ -77,6 +81,7 @@ def parsing():
 		</MSM>
 	</WLANProfile>
 	"""
+<<<<<<< HEAD
   WINDOWStls = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
       <name>SampleWPA2EnterpriseTLS</name>
       <SSIDConfig>
@@ -126,6 +131,8 @@ def parsing():
       </MSM>
   </WLANProfile>
   """
+=======
+>>>>>>> 61c273543773a4040ee8bcce26abf104d1293371
 	WINDOWSopen = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 		<name></name>
 		<SSIDConfig>
@@ -159,7 +166,11 @@ def parsing():
 	origin = U2.urlopen("https://packetfence.org/wireless-profile.mobileconfig") 
 	data = origin.read()
 	
+<<<<<<< HEAD
 	#Get data from the mobileconfig file, ssidname, security type, password, profile name, certificate
+=======
+	#Get data from the mobileconfig file, username, ssidname, security type, password 
+>>>>>>> 61c273543773a4040ee8bcce26abf104d1293371
 	r = PL.readPlistFromString(data)
 	ssidn = r["PayloadContent"][0]["SSID_STR"]
 	sec = r["PayloadContent"][0]["EncryptionType"]
@@ -169,6 +180,7 @@ def parsing():
 	#certd = r["PayloadContent"][1]["PayloadContent"]
 	#certt = r["PayloadContent"][1]["PayloadType"]
 	
+<<<<<<< HEAD
   #Security of the SSID
 	if "EAPClientConfiguration" in r:
 		un = r["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
@@ -177,6 +189,12 @@ def parsing():
         root = ET.fromstring(WINDOWSpeap)
       elif eap = 13:
         root = ET.fromstring(WINDOWStls)
+=======
+	if "EAPClientConfiguration" in r:
+		un = r["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
+		eap = r["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
+		root = ET.fromstring(WINDOWSoneX)
+>>>>>>> 61c273543773a4040ee8bcce26abf104d1293371
 		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
 		if sec == "WPA":
 			sec = "WPA2"
@@ -184,9 +202,15 @@ def parsing():
 		elif sec == "WEP":
 			sec = "WEP"
 			enc.text = "WEP"
+<<<<<<< HEAD
  	else:
   	root = ET.fromstring(WINDOWSopen)
     enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+=======
+	else:
+		root = ET.fromstring(WINDOWSopen)
+		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+>>>>>>> 61c273543773a4040ee8bcce26abf104d1293371
 		if sec == "WEP":
 			sec = "WEP"
 			enc.text = "WEP"
@@ -197,9 +221,14 @@ def parsing():
 			sec = "open"
 			enc.text = "none"
 
+<<<<<<< HEAD
 	#Insert certificate
 
 	#Search specific fields in wintemplate and remplace it
+=======
+	
+	#Search ssid name, username in wintemplate and remplace it
+>>>>>>> 61c273543773a4040ee8bcce26abf104d1293371
 	nname = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
 	nname.text = profile
 	ssid = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
@@ -248,4 +277,3 @@ def parsing():
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
 #  USA.
-
