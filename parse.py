@@ -3,9 +3,10 @@ import os
 import urllib2 as U2
 import xml.etree.ElementTree as ET
 import plistlib as PL
+import re
 
 def parsing():
-	WINDOWSoneX = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+	WINDOWSpeap = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 		<name></name>
 		<SSIDConfig>
 			<SSID>
@@ -76,6 +77,55 @@ def parsing():
 		</MSM>
 	</WLANProfile>
 	"""
+  WINDOWStls = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+      <name>SampleWPA2EnterpriseTLS</name>
+      <SSIDConfig>
+          <SSID>
+              <name>SampleWPA2EnterpriseTLS</name>
+          </SSID>
+      </SSIDConfig>
+      <connectionType>ESS</connectionType>
+      <connectionMode>auto</connectionMode>
+      <autoSwitch>false</autoSwitch>
+      <MSM>
+         <security>
+              <authEncryption>
+                  <authentication>WPA2</authentication>
+                  <encryption>AES</encryption>
+                  <useOneX>true</useOneX>
+              </authEncryption>
+         <OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
+             <EAPConfig>
+                 <EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig" 
+                     xmlns:eapCommon="http://www.microsoft.com/provisioning/EapCommon" 
+                     xmlns:baseEap="http://www.microsoft.com/provisioning/BaseEapMethodConfig">
+                     <EapMethod>
+                         <eapCommon:Type>13</eapCommon:Type> 
+                         <eapCommon:AuthorId>0</eapCommon:AuthorId> 
+                     </EapMethod>
+                         <Config xmlns:baseEap="http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1" 
+                             xmlns:eapTls="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1">
+                             <baseEap:Eap>
+                                 <baseEap:Type>13</baseEap:Type> 
+                                 <eapTls:EapType>
+                                     <eapTls:CredentialsSource>
+                                         <eapTls:CertificateStore />
+                                     </eapTls:CredentialsSource>
+                                     <eapTls:ServerValidation>
+                                         <eapTls:DisableUserPromptForServerValidation>false</eapTls:DisableUserPromptForServerValidation> 
+                                         <eapTls:ServerNames /> 
+                                     </eapTls:ServerValidation> 
+                                     <eapTls:DifferentUsername>false</eapTls:DifferentUsername> 
+                                 </eapTls:EapType>
+                             </baseEap:Eap>
+                         </Config>
+                 </EapHostConfig>
+             </EAPConfig>
+         </OneX>
+         </security>
+      </MSM>
+  </WLANProfile>
+  """
 	WINDOWSopen = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 		<name></name>
 		<SSIDConfig>
@@ -123,7 +173,10 @@ def parsing():
 	if "EAPClientConfiguration" in r:
 		un = r["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
 		eap = r["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
-		root = ET.fromstring(WINDOWSoneX)
+      if eap = 25:
+        root = ET.fromstring(WINDOWSpeap)
+      elif eap = 13:
+        root = ET.fromstring(WINDOWStls)
 		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
 		if sec == "WPA":
 			sec = "WPA2"
