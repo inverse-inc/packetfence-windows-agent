@@ -6,7 +6,7 @@ import plistlib as PL
 import re
 
 def parsing():
-	WINDOWSpeap = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+  WINDOWSpeap = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 		<name></name>
 		<SSIDConfig>
 			<SSID>
@@ -159,20 +159,22 @@ def parsing():
 	origin = U2.urlopen("https://packetfence.org/wireless-profile.mobileconfig") 
 	data = origin.read()
 	
-	#Get data from the mobileconfig file, ssidname, security type, password, profile name, certificate
+	#Get data from the mobileconfig file, ssidname, security type, password, profile name
 	r = PL.readPlistFromString(data)
 	ssidn = r["PayloadContent"][0]["SSID_STR"]
 	sec = r["PayloadContent"][0]["EncryptionType"]
 	profile = r["PayloadDisplayName"]
+  passk = ""
 	passk = r["PayloadContent"][0]["Password"]
 	
   #Security of the SSID
+  certn = ""
 	if "EAPClientConfiguration" in r:
 		un = r["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
 		eap = r["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
-      if eap = 25:
+      if eap == 25:
         root = ET.fromstring(WINDOWSpeap)
-      elif eap = 13:
+      elif eap == 13:
         root = ET.fromstring(WINDOWStls)
         certn = r["PayloadContent"][1]["PayloadCertificateFileName"]
         url = "https://packetfence.org/content"
@@ -199,7 +201,6 @@ def parsing():
 			enc.text = "none"
 
 	#Search specific fields in wintemplate and remplace it
-	
 	nname = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
 	nname.text = profile
 	ssid = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
@@ -210,23 +211,24 @@ def parsing():
 	secf = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
 	sect = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
 	sect.text = sec
-	passw = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
-	passw.text = passk
+	if passk != "":
+    passw = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
+	  passw.text = passk
 	
 	
 	#Get the path to temp folder(right to write)
 	pa = os.getenv("tmp")
 	file = os.path.join(pa, "template-out.xml")
-
 	config = ET.tostring(root) 
   
   #Add certificate to windows
-  cer = os.path.join(pa, certn)
-  with open(cer, "w") as certificate:
-    certificate.write(certd)
-  cmd = " -addstore -f Root "
-  certutil = "C:\Windows\System32\certutil.exe"
-  os.system(certutil+cmd+cer) 
+  if certn != "":
+    cer = os.path.join(pa, certn)
+    with open(cer, "w") as certificate:
+      certificate.write(certd)
+    cmd = " -addstore -f Root "
+    certutil = "C:\Windows\System32\certutil.exe"
+    os.system(certutil+cmd+cer) 
 
 	#Create new file with data 
 	with open(file, "w") as configfile:
@@ -239,7 +241,8 @@ def parsing():
 	#Remove files
 	df = "del /F "
 	os.system(df+file)
-  os.system(df+cer)
+  if certn != "":
+    os.system(df+cer)
  
 #  Copyright (C) 2005-2014 Inverse inc.
 # 
