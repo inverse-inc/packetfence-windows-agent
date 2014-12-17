@@ -165,9 +165,6 @@ def parsing():
 	sec = r["PayloadContent"][0]["EncryptionType"]
 	profile = r["PayloadDisplayName"]
 	passk = r["PayloadContent"][0]["Password"]
-	#certn = r["PayloadContent"][1]["PayloadCertificateFileName"]
-	#certd = r["PayloadContent"][1]["PayloadContent"]
-	#certt = r["PayloadContent"][1]["PayloadType"]
 	
   #Security of the SSID
 	if "EAPClientConfiguration" in r:
@@ -177,6 +174,10 @@ def parsing():
         root = ET.fromstring(WINDOWSpeap)
       elif eap = 13:
         root = ET.fromstring(WINDOWStls)
+        certn = r["PayloadContent"][1]["PayloadCertificateFileName"]
+        url = "https://packetfence.org/content"
+        certf = U2.urlopen(url + certn)
+        certd = certf.read()
 		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
 		if sec == "WPA":
 			sec = "WPA2"
@@ -196,8 +197,6 @@ def parsing():
 		else:
 			sec = "open"
 			enc.text = "none"
-
-	#Insert certificate
 
 	#Search specific fields in wintemplate and remplace it
 	
@@ -220,6 +219,14 @@ def parsing():
 	file = os.path.join(pa, "template-out.xml")
 
 	config = ET.tostring(root) 
+  
+  #Add certificate to windows
+  cer = os.path.join(pa, certn)
+  with open(cer, "w") as certificate:
+    certificate.write(certd)
+  cmd = " -addstore -f Root "
+  certutil = "C:\Windows\System32\certutil.exe"
+  os.system(certutil+cmd+cer) 
 
 	#Create new file with data 
 	with open(file, "w") as configfile:
@@ -229,9 +236,10 @@ def parsing():
 	net = "netsh wlan add profile filename="
 	os.system(net+file)
 
-	#Remove config file
+	#Remove files
 	df = "del /F "
 	os.system(df+file)
+  os.system(df+cer)
  
 #  Copyright (C) 2005-2014 Inverse inc.
 # 
