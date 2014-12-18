@@ -187,7 +187,7 @@ def parsing():
     elif sec == "WEP":
       sec = "WEP"
       enc.text = "WEP"
-   else:
+  else:
     root = ET.fromstring(WINDOWSopen)
     enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
     if sec == "WEP":
