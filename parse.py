@@ -79,6 +79,7 @@ def parsing():
 				<hex></hex>
 				<name></name>
 			</SSID>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>auto</connectionMode>
@@ -129,7 +130,7 @@ def parsing():
 				<hex></hex>
 				<name></name>
 			</SSID>
-			<nonBroadcast>false</nonBroadcast>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>manual</connectionMode>
@@ -240,9 +241,9 @@ def parsing():
 
 	#Remove files
 	df = "del /F "
-	#os.system(df+file)
-	#if certn != "":
-		#os.system(df+cer)
+	os.system(df+file)
+	if certn != "":
+		os.system(df+cer)
  
 #  Copyright (C) 2005-2014 Inverse inc.
 # 
