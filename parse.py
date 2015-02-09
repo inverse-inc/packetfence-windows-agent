@@ -89,7 +89,7 @@ def parsing():
 	name = ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
 	name.text = ssidn
 	hexname = ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
-	hexname.text = "ssidn".encode("hex")  
+	hexname.text = ssidn.encode("hex")  
 
 	#Get the path to temp folder(right to write)
 	pa = os.getenv("tmp")
