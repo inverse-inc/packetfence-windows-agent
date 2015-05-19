@@ -260,9 +260,7 @@ def parsing():
 	if eap == 13:
 		eapty = eaphc.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
 		trustedca = eapty.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]
-		fingerprint = r["PayloadContent"][1]["PayloadDescription"]
-		reid = re.search(r"SHA1 Fingerprint=(.*)\n", fingerprint)
-		fingca = reid.group(1) 
+		fingerprint = r["cafingerprint"]
 		trustedca.text = fingca
 	
 	if sec == "open":
