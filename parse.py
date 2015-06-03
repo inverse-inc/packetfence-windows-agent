@@ -8,6 +8,7 @@ import re
 import base64
 import sys
 import easygui
+import M2Crypto
 from imageBG import bgimg
 
 def parsing():
@@ -170,7 +171,7 @@ def parsing():
 	
 	#Download mobileconfig file, convert to str
 	try:
-		origin = U2.urlopen("http://packetfence.org/wireless-profile.mobileconfig") 
+		origin = U2.urlopen("http://packetfence.org/wireless-profile.mobileconfig")
 		data = origin.read()
 	except:
 		easygui.msgbox("The program was unable to retrieve your wireless profile, please contact your IT Support", "Error")
@@ -215,9 +216,7 @@ def parsing():
 				sys.exit(0)
 			try:
 				caname = r["PayloadContent"][2]["PayloadCertificateFileName"]
-				reca = re.search(r"(.*)\.", caname)
-				myca = reca.group(1)
-				cabin = os.path.join(pa, myca+".cer")
+				cabin = os.path.join(pa, caname+".cer")
 				cadata = r["PayloadContent"][2]["PayloadContent"]
 				caddata = base64.b64decode(str(cadata))
 				tmpca = open(cabin, 'wb')
@@ -260,8 +259,13 @@ def parsing():
 	if eap == 13:
 		eapty = eaphc.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
 		trustedca = eapty.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]
-		fingerprint = r["cafingerprint"]
-		trustedca.text = fingca
+		with open(cabin, 'rb') as read_bin_cert:
+			cert_object = read_bin_cert.read()
+		read_bin_cert.close()
+		my_cert = M2Crypto.X509.load_cert_der_string(cert_object)
+		fingerca = my_cert.get_fingerprint('sha1')
+		refing = " ".join(fingerca[i:i+2] for i in range(0, len(fingerca), 2))
+		trustedca.text = refing
 	
 	if sec == "open":
 		passt = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyType")[0]
@@ -314,13 +318,6 @@ def parsing():
 	try:
 		net = "netsh wlan add profile filename="
 		os.system(net+file)
-		#print ht
-		#ans = True
-		#while ans:
-		#	ans = False
-		#	ht = os.system(net+file)
-		#	print ht
-		#	if ht == 0:	
 		successmsg = "The profile was successfully added to the machine, please select your newly added profile "+profile+" in the Wifi networks."
 		easygui.msgbox(successmsg, "Information")
 	except:
