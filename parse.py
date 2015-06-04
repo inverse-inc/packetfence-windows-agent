@@ -1,15 +1,16 @@
 #Python program for autoconfig wireless network on windows 7/8
-import os
-import urllib2 as U2
-import xml.etree.ElementTree as ET
-import plistlib as PL
-import wx
-import re
-import base64
-import sys
-import easygui
-import M2Crypto
+from os import path, getenv
+from urllib2 import urlopen
+from xml.etree.ElementTree import fromstring, tostring
+from plistlib import readPlistFromString
+from re import search
+from base64 import b64decode
+from sys import exit
+from subprocess import Popen, PIPE
+from easygui import msgbox, passwordbox
+from M2Crypto import X509
 from imageBG import bgimg
+import wx
 
 def parsing():
 	WINDOWSpeap = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
@@ -171,166 +172,167 @@ def parsing():
 	
 	#Download mobileconfig file, convert to str
 	try:
-		origin = U2.urlopen("http://packetfence.org/wireless-profile.mobileconfig")
+		origin = urlopen("http://packetfence.org/profile.xml")
 		data = origin.read()
 	except:
-		easygui.msgbox("The program was unable to retrieve your wireless profile, please contact your IT Support", "Error")
-		sys.exit(0)
+		msgbox("The program was unable to retrieve your wireless profile, please contact your IT Support", "Error")
+		exit(0)
 		
 		
 	
 	#Get temp folder path user path
-	pa = os.getenv("tmp")
-	reun = re.search(r"(.*)\\AppData", pa)
-	userlocal = reun.group(1)
+	temp_path = getenv("tmp")
+	user_logged = search(r"(.*)\\AppData", temp_path)
+	userlocal = user_logged.group(1)
 	
-	#Get data from the mobileconfig file, ssidname, security type, password, profile name, certificate
+	#Get data from the mobileconfig file, ssid_nameame, security type, password, profile name, certificate
 	try:
-		r = PL.readPlistFromString(data)
-		ssidn = r["PayloadContent"][0]["SSID_STR"]
-		sec = r["PayloadContent"][0]["EncryptionType"]
-		profile = r["PayloadDisplayName"]
-		passk = ""
+		read_profile = readPlistFromString(data)
+		ssid_name = read_profile["PayloadContent"][0]["SSID_STR"]
+		sec_type = read_profile["PayloadContent"][0]["EncryptionType"]
+		wifi_key = ""
 	except:
-		easygui.msgbox("The program cannot read the profile data, please contact your IT Support", "Error")
-		sys.exit(0)
+		msgbox("The program cannot read the profile data, please contact your IT Support", "Error")
+		exit(0)
 		
 	#Security of the SSID
-	ddata = ""
+	user_cert_decode = ""
 	if "EAPClientConfiguration" in data:
-		un = r["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
-		eap = r["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
-		if eap == 25:
-			root = ET.fromstring(WINDOWSpeap)
-		elif eap == 13:
-			root = ET.fromstring(WINDOWStls)
+		user_auth = read_profile["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
+		eap_type = read_profile["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
+		if eap_type == 25:
+			root = fromstring(WINDOWSpeap)
+		elif eap_type == 13:
+			root = fromstring(WINDOWStls)
 			try:
-				certp12 = os.path.join(pa, un+".p12")
-				cdata = r["PayloadContent"][1]["PayloadContent"] 
-				ddata = base64.b64decode(str(cdata))
-				tmpcer = open(certp12, 'wb')
-				tmpcer.write(ddata)
-				tmpcer.close()
+				cert_p12 = path.join(temp_path, user_auth+".p12")
+				user_cert = read_profile["PayloadContent"][1]["PayloadContent"] 
+				user_cert_decode = b64decode(str(user_cert))
+				tmp_cert = open(cert_p12, 'wb')
+				tmp_cert.write(user_cert_decode)
+				tmp_cert.close()
 			except:
-				easygui.msgbox("Your personal certificate file could not be generated, please contact your IT support.","Error")
-				sys.exit(0)
+				msgbox("Your personal certificate file could not be generated, please contact your IT support.","Error")
+				exit(0)
 			try:
-				caname = r["PayloadContent"][2]["PayloadCertificateFileName"]
-				cabin = os.path.join(pa, caname+".cer")
-				cadata = r["PayloadContent"][2]["PayloadContent"]
-				caddata = base64.b64decode(str(cadata))
-				tmpca = open(cabin, 'wb')
-				tmpca.write(caddata)
-				tmpca.close()
+				ca_name = read_profile["PayloadContent"][2]["PayloadCertificateFileName"]
+				ca_file_binary = path.join(temp_path, ca_name+".cer")
+				ca_cert = read_profile["PayloadContent"][2]["PayloadContent"]
+				ca_cert_decode = b64decode(str(ca_cert))
+				b64decode(str(ca_cert))
+				tmp_ca = open(ca_file_binary, 'wb')
+				tmp_ca.write(ca_cert_decode)
+				tmp_ca.close()
 			except:
-				easygui.msgbox("The certificate of Authority file could not be generated, please contact your IT support.","Error")
-				sys.exit(0)
-		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
-		sec = "WPA2"
-		enc.text = "AES"
+				msgbox("The certificate of Authority file could not be generated, please contact your IT support.","Error")
+				exit(0)
+		encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+		sec_type = "WPA2"
+		encryption.text = "AES"
 	else:
-		root = ET.fromstring(WINDOWSopen)
-		passk = r["PayloadContent"][0]["Password"]
-		enc = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
-		if sec == "WEP":
-			sec = "open"
-			enc.text = "WEP"
-		elif sec == "WPA":
-			sec = "WPA2PSK"
-			enc.text = "AES"
+		root = fromstring(WINDOWSopen)
+		wifi_key = read_profile["PayloadContent"][0]["Password"]
+		encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+		if sec_type == "WEP":
+			sec_type = "open"
+			encryption.text = "WEP"
+		elif sec_type == "WPA":
+			sec_type = "WPA2PSK"
+			encryption.text = "AES"
 		else:
-			sec = "open"
-			enc.text = "none"
+			sec_type = "open"
+			encryption.text = "none"
 
 	#Search specific fields in wintemplate and remplace it
-	nname = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
-	nname.text = profile
-	ssid = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
-	name = ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
-	name.text = ssidn
-	hexname = ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
-	hexname.text = ssidn.encode("hex")  
-	secf = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
-	sect = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
-	onex = secf.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
-	eapc = onex.findall("{http://www.microsoft.com/networking/OneX/v1}EAPConfig")[0]
-	eaphc = eapc.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapHostConfig")[0]
-	eapt = eaphc.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapMethod/{http://www.microsoft.com/provisioning/EapCommon}Type")[0]
-	if eap == 13:
-		eapty = eaphc.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
-		trustedca = eapty.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]
-		with open(cabin, 'rb') as read_bin_cert:
+	profile_name = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
+	profile_name.text = ssid_name
+	profile_ssid = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
+	profile_ssid_name = profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
+	profile_ssid_name.text = ssid_name
+	ssid_hex = profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
+	ssid_hex.text = ssid_name.encode("hex")  
+	sec_section = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
+	sec_auth = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
+	onex = sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
+	eap_config = onex.findall("{http://www.microsoft.com/networking/OneX/v1}EAPConfig")[0]
+	eap_host_config = eap_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapHostConfig")[0]
+	if eap_type == 13:
+		eap_type_key = eap_host_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
+		ca_to_trust = eap_type_key.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]
+		with open(ca_file_binary, 'rb') as read_bin_cert:
 			cert_object = read_bin_cert.read()
 		read_bin_cert.close()
-		my_cert = M2Crypto.X509.load_cert_der_string(cert_object)
-		fingerca = my_cert.get_fingerprint('sha1')
-		refing = " ".join(fingerca[i:i+2] for i in range(0, len(fingerca), 2))
-		trustedca.text = refing
+		my_cert = X509.load_cert_der_string(cert_object)
+		ca_fingerprint = my_cert.get_fingerprint('sha1')
+		parse_ca_fingerprint = " ".join(ca_fingerprint[i:i+2] for i in range(0, len(ca_fingerprint), 2))
+		ca_to_trust.text = parse_ca_fingerprint
 	
-	if sec == "open":
-		passt = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyType")[0]
-		passt.text = "networkKey"
-		sect.text = "open"
+	if sec_type == "open":
+		open_passcode = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyType")[0]
+		open_passcode.text = "networkKey"
+		sec_auth.text = "open"
 	else:
-		sect.text = sec
-	if passk != "":
-		passw = secf.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
-		passw.text = passk
+		sec_auth.text = sec_type
+	if wifi_key != "":
+		profile_wifi_key = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
+		profile_wifi_key.text = wifi_key
 		
 	#Get the file to temp folder(right to write)
-	file = os.path.join(pa, "template-out.xml")
+	profile_file = path.join(temp_path, "template-out.xml")
 
-	config = ET.tostring(root) 
+	profile_value = tostring(root) 
 	
 	#Add certificate to windows
-	if ddata != "":
-		badpw = True
-		while badpw:
-			badpw = False
-			userpw = easygui.passwordbox("Please enter your certificate password", "Certificate Password")
-			cmd = " -f -user -p "
-			cmd2 = " -importpfx "
-			cmdcert = cmd+userpw+cmd2
+	if user_cert_decode != "":
+		bad_cert_password = True
+		while bad_cert_password:
+			bad_cert_password = False
+			cert_password = passwordbox("Please enter your certificate password", "Certificate Password")
+			option_certutil = " -f -user -p "
+			format_certutil = " -importpfx "
+			certutil_command = option_certutil+cert_password+format_certutil
 			certutil = "C:\Windows\System32\certutil.exe"
-			addcert = os.system(certutil+cmdcert+certp12)
-			if addcert == 0:
-				easygui.msgbox("Your certificate was successfully installed, please press OK to continue.", "Success")
-			elif addcert == -2147024810:
-				easygui.msgbox ("The password you filled in was wrong, please try again", "BadPassword")
-				badpw = True
+			add_cert = Popen(certutil+certutil_command+cert_p12, shell=True, stdout=PIPE)
+			cert_code = add_cert.communicate()[0]
+			return_cert = add_cert.returncode
+			if return_cert == 0:
+				msgbox("Your certificate was successfully installed, please press OK to continue.", "Success")
+			elif return_cert == -2147024810:
+				msgbox ("The password you filled in was wrong, please try again", "BadPassword")
+				bad_cert_password = True
 			else:
-				easygui.msgbox("Your certificate could not be installed on your machine, please contact your IT support.", "Error")
-				sys.exit(0)
+				msgbox("Your certificate could not be installed on your machine, please contact your IT support.", "Error")
+				exit(0)
 	
 	#add CA to the machine
 	try:
-		command = " -addstore -user \"Root\" "
-		os.system(certutil+command+cabin)
+		add_ca = " -addstore -user \"Root\" "
+		Popen(certutil+add_ca+ca_file_binary, shell=True)
 	except:
-		easygui.msgbox("The CA could not be installed on your machine, please contact your IT support.", "Error")
-		sys.exit(0)	
+		msgbox("The Certificate of Authority could not be installed on your machine, please contact your IT support.", "Error")
+		exit(0)	
 	
 	#Create new file with data 
-	with open(file, "w") as configfile:
-		configfile.write(config)
+	with open(profile_file, "w") as configfile:
+		configfile.write(profile_value)
 
 	#Win command to add wifi profile
 	try:
-		net = "netsh wlan add profile filename="
-		os.system(net+file)
-		successmsg = "The profile was successfully added to the machine, please select your newly added profile "+profile+" in the Wifi networks."
-		easygui.msgbox(successmsg, "Information")
+		netsh_command = "netsh wlan add profile filename="
+		Popen(netsh_command+profile_file, shell=True)
+		success_msg = "The profile was successfully added to the machine, please select your newly added profile "+ssid_name+" in the Wifi networks."
+		msgbox(success_msg, "Information")
 	except:
-		easygui.msgbox("The profile could not be added to your machine, please contact your IT support.", "Error")
-		sys.exit(0)
+		msgbox("The profile could not be added to your machine, please contact your IT support.", "Error")
+		exit(0)
 		
 	#Remove files
-	df = "del /F "
-	os.system(df+file)
-	if ddata != "":
-		os.system(df+certp12)
-		os.system(df+cabin)
-	sys.exit(0)
+	delete_file = "del /F "
+	Popen(delete_file+profile_file, shell=True)
+	if user_cert_decode != "":
+		Popen(delete_file+cert_p12, shell=True)
+		Popen(delete_file+ca_file_binary, shell=True)
+	exit(0)
 		
 class MainPanel(wx.Panel):
  
