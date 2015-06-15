@@ -6,7 +6,7 @@ from plistlib import readPlistFromString
 from re import search
 from base64 import b64decode
 from sys import exit
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STARTF_USESHOWWINDOW, STARTUPINFO
 from easygui import msgbox, passwordbox
 from M2Crypto import X509
 from imageBG import bgimg
@@ -105,7 +105,7 @@ def parsing():
 				<preAuthMode>disabled</preAuthMode>
 				<OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
 					<cacheUserData>true</cacheUserData>
-					<authMode>machineOrUser</authMode> 
+					<authMode>user</authMode> 
 					<EAPConfig>
 						<EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
 							<EapMethod><Type xmlns="http://www.microsoft.com/provisioning/EapCommon">13</Type>
@@ -292,7 +292,9 @@ def parsing():
 			format_certutil = " -importpfx "
 			certutil_command = option_certutil+cert_password+format_certutil
 			certutil = "C:\Windows\System32\certutil.exe"
-			add_cert = Popen(certutil+certutil_command+cert_p12, shell=True, stdout=PIPE)
+			si = STARTUPINFO()
+			si.dwFlags |= STARTF_USESHOWWINDOW
+			add_cert = Popen(certutil+certutil_command+cert_p12, stdout=PIPE, stdin=PIPE, stderr=PIPE, startupinfo=si)
 			cert_code = add_cert.communicate()[0]
 			return_cert = add_cert.returncode
 			if return_cert == 0:
