@@ -204,28 +204,32 @@ def parsing():
 			root = fromstring(WINDOWSpeap)
 		elif eap_type == 13:
 			root = fromstring(WINDOWStls)
-			try:
-				cert_p12 = path.join(temp_path, user_auth+".p12")
-				user_cert = read_profile["PayloadContent"][1]["PayloadContent"] 
-				user_cert_decode = b64decode(str(user_cert))
-				tmp_cert = open(cert_p12, 'wb')
-				tmp_cert.write(user_cert_decode)
-				tmp_cert.close()
-			except:
-				msgbox("Your personal certificate file could not be generated, please contact your IT support.","Error")
-				exit(0)
-			try:
-				ca_name = read_profile["PayloadContent"][2]["PayloadCertificateFileName"]
-				ca_file_binary = path.join(temp_path, ca_name+".cer")
-				ca_cert = read_profile["PayloadContent"][2]["PayloadContent"]
-				ca_cert_decode = b64decode(str(ca_cert))
-				b64decode(str(ca_cert))
-				tmp_ca = open(ca_file_binary, 'wb')
-				tmp_ca.write(ca_cert_decode)
-				tmp_ca.close()
-			except:
-				msgbox("The certificate of Authority file could not be generated, please contact your IT support.","Error")
-				exit(0)
+            payloads = [a for a in read_profile["PayloadContent"] if "PayloadType" in a]
+            for type in payloads:
+                if type["PayloadType"] == "com.apple.secutiy.pkcs12":
+			        try:
+				        cert_p12 = path.join(temp_path, user_auth+".p12")
+				        user_cert = type["PayloadContent"]
+				        user_cert_decode = b64decode(str(user_cert))
+				        tmp_cert = open(cert_p12, 'wb')
+				        tmp_cert.write(user_cert_decode)
+				        tmp_cert.close()
+			        except:
+				        msgbox("Your personal certificate file could not be generated, please contact your local support.","Error")
+				        exit(0)
+                elif type["PayloadType"] == "com.apple.secutiy.root":
+        			try:
+		        		ca_name = type["PayloadCertificateFileName"]
+			        	ca_file_binary = path.join(temp_path, ca_name+".cer")
+				        ca_cert = type["PayloadContent"]
+		        		ca_cert_decode = b64decode(str(ca_cert))
+			        	b64decode(str(ca_cert))
+		        		tmp_ca = open(ca_file_binary, 'wb')
+				        tmp_ca.write(ca_cert_decode)
+			        	tmp_ca.close()
+			        except:
+				        msgbox("The certificate of Authority file could not be generated, please contact your local support.","Error")
+				        exit(0)
 		encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
 		sec_type = "WPA2"
 		encryption.text = "AES"
@@ -303,7 +307,7 @@ def parsing():
 				msgbox ("The password you filled in was wrong, please try again", "BadPassword")
 				bad_cert_password = True
 			else:
-				msgbox("Your certificate could not be installed on your machine, please contact your IT support.", "Error")
+				msgbox("Your certificate could not be installed on your machine, please contact your local support.", "Error")
 				exit(0)
 	
 	#add CA to the machine
@@ -311,7 +315,7 @@ def parsing():
 		add_ca = " -addstore -user \"Root\" "
 		Popen(certutil+add_ca+ca_file_binary, shell=True)
 	except:
-		msgbox("The Certificate of Authority could not be installed on your machine, please contact your IT support.", "Error")
+		msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
 		exit(0)	
 	
 	#Create new file with data 
@@ -325,7 +329,7 @@ def parsing():
 		success_msg = "The profile was successfully added to the machine, please select your newly added profile "+ssid_name+" in the Wifi networks."
 		msgbox(success_msg, "Information")
 	except:
-		msgbox("The profile could not be added to your machine, please contact your IT support.", "Error")
+		msgbox("The profile could not be added to your machine, please contact your local support.", "Error")
 		exit(0)
 		
 	#Remove files
