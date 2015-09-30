@@ -124,7 +124,7 @@ def parsing():
 										</CredentialsSource>
 										<ServerValidation>
 											<DisableUserPromptForServerValidation>false</DisableUserPromptForServerValidation>
-											<ServerNames/>
+											<ServerNames></ServerNames>
 											<TrustedRootCA></TrustedRootCA>
 										</ServerValidation>
 										<DifferentUsername>false</DifferentUsername>
@@ -268,6 +268,8 @@ def parsing():
 		read_bin_cert.close()
 		my_cert = X509.load_cert_der_string(cert_object)
 		ca_fingerprint = my_cert.get_fingerprint('sha1')
+		if (len(ca_fingerprint) % 2 != 0):
+			ca_fingerprint = '0' + ca_fingerprint
 		parse_ca_fingerprint = " ".join(ca_fingerprint[i:i+2] for i in range(0, len(ca_fingerprint), 2))
 		ca_to_trust.text = parse_ca_fingerprint
 	
