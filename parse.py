@@ -199,6 +199,8 @@ def parsing():
 	user_cert_decode = ""
 	if "EAPClientConfiguration" in data:
 		user_auth = read_profile["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
+		if user_auth == "":
+			user_auth = "certificate"
 		eap_type = read_profile["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
 		if eap_type == 25:
 			root = fromstring(WINDOWSpeap)
