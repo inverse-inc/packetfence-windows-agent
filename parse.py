@@ -170,8 +170,8 @@ class models:
 	</WLANProfile>
 	"""
 
-class profile_xml(self):
-    def fetch_profile():
+class profile_xml():
+    def fetch_profile(self):
 	#Download mobileconfig file, convert to str
     	try:
     		origin = urlopen("http://packetfence.org/profile.xml")
@@ -181,18 +181,19 @@ class profile_xml(self):
     		msgbox("The program was unable to retrieve your wireless profile, please contact your local support", "Error")
     		exit(0)
 
-	def parse_profile():
+	def parse_profile(self):
 	#Get data from the mobileconfig file, ssid_nameame, security type, password, profile name, certificate
 	    try:
-	    	read_profile = readPlistFromString(data)
+	    	read_profile = readPlistFromString(fetch_profile)
 	    	ssid_name = read_profile["PayloadContent"][0]["SSID_STR"]
 	    	sec_type = read_profile["PayloadContent"][0]["EncryptionType"]
 	    	wifi_key = ""
+            return read_profile, ssid_name, sec_type, wifi_key
 	    except:
 	    	msgbox("The program cannot read the profile data, please contact your local support", "Error")
 	    	exit(0)
 
-    def create_profile():
+    def create_profile(self):
     	#Search specific fields in wintemplate and remplace it
     	profile_name = configure_eap().root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
     	profile_name.text = ssid_name
@@ -219,7 +220,7 @@ class profile_xml(self):
     		parse_ca_fingerprint = " ".join(ca_fingerprint[i:i+2] for i in range(0, len(ca_fingerprint), 2))
     		ca_to_trust.text = parse_ca_fingerprint
     	
-    	if parse_profile().sec_type == "open":
+    	if profile_xml().parse_profile()[2] == "open":
     		open_passcode = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyType")[0]
     		open_passcode.text = "networkKey"
     		sec_auth.text = "open"
@@ -249,7 +250,7 @@ class local_computer(self):
     	try:
     		netsh_command = "netsh wlan add profile filename="
     		Popen(netsh_command+create_profile().profile_file, shell=True)
-    		success_msg = "The profile was successfully added to the machine, please select your newly added profile "+parse_profile().ssid_name+" in the Wifi networks."
+    		success_msg = "The profile was successfully added to the machine, please select your newly added profile "+profile_xml().parse_profile()[1]+" in the Wifi networks."
     		msgbox(success_msg, "Information")
     	except:
     		msgbox("The profile could not be added to your machine, please contact your local support.", "Error")
@@ -268,15 +269,15 @@ class configure_eap():
 	#Security of the SSID
 	user_cert_decode = ""
 	if "EAPClientConfiguration" in get_profile().data:
-		user_auth = parse_profile().read_profile["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
+		user_auth = profile_xml().parse_profile()[0]["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
 		if user_auth == "":
 			user_auth = "certificate"
-		eap_type = parse_profile().read_profile["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
+		eap_type = profile_xml().parse_profile()[0]["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
 		if eap_type == 25:
 			root = fromstring(models().WINDOWSpeap)
 		elif eap_type == 13:
 			root = fromstring(models().WINDOWStls)
-			payloads = [a for a in parse_profile().read_profile["PayloadContent"] if "PayloadType" in a]
+			payloads = [a for a in profile_xml().parse_profile()[0]["PayloadContent"] if "PayloadType" in a]
 			for type in payloads:
 				if type["PayloadType"] == "com.apple.security.pkcs12":
 					try:
@@ -307,12 +308,12 @@ class configure_eap():
 		encryption.text = "AES"
 	else:
 		root = fromstring(models().WINDOWSopen)
-		wifi_key = parse_profile().read_profile["PayloadContent"][0]["Password"]
+		wifi_key = profile_xml().parse_profile()[0]["PayloadContent"][0]["Password"]
 		encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
-		if parse_profile().sec_type == "WEP":
+		if profile_xml().parse_profile()[2] == "WEP":
 			sec_type = "open"
 			encryption.text = "WEP"
-		elif parse_profile().sec_type == "WPA":
+		elif profile_xml().parse_profile()[2] == "WPA":
 			sec_type = "WPA2PSK"
 			encryption.text = "AES"
 		else:
@@ -359,7 +360,7 @@ class MainPanel(wx.Panel):
 		models()
 		get_profile()
 		set_env()
-		parse_profile()
+		profile_xml().parse_profile()
 		configure_eap()
 		create_profile()
 		install_certificate()
