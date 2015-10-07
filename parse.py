@@ -246,8 +246,8 @@ class local_computer():
     def install_profile(self):
         #Create new file with data 
     	with open(profile_xml().create_profile()['profile_file'], "w") as configfile:
-        	configfile.write(profile_xml().create_profile()['profile_value'])
- 
+            configfile.write(profile_xml().create_profile()['profile_value'])
+
         #Win command to add wifi profile
         try:
             netsh_command = "netsh wlan add profile filename="
@@ -328,37 +328,37 @@ def configure_eap(self):
 
 class certificate():
     def	install_certificate(self):
-    	#Add certificate to windows
-    	if user_cert_decode != "":
-    		bad_cert_password = True
-    		while bad_cert_password:
-    			bad_cert_password = False
-    			cert_password = passwordbox("Please enter your certificate password", "Certificate Password")
-    			option_certutil = " -f -user -p "
-    			format_certutil = " -importpfx "
-    			certutil_command = option_certutil+cert_password+format_certutil
-    			certutil = "C:\Windows\System32\certutil.exe"
-    			si = STARTUPINFO()
-    			si.dwFlags |= STARTF_USESHOWWINDOW
-    			add_cert = Popen(certutil+certutil_command+configure_eap().cert_p12, stdout=PIPE, stdin=PIPE, stderr=PIPE, startupinfo=si)
-    			cert_code = add_cert.communicate()[0]
-    			return_cert = add_cert.returncode
-    			if return_cert == 0:
-    				msgbox("Your certificate was successfully installed, please press OK to continue.", "Success")
-    			elif return_cert == -2147024810:
-    				msgbox ("The password you filled in was wrong, please try again", "BadPassword")
-    				bad_cert_password = True
-    			else:
-    				msgbox("Your certificate could not be installed on your machine, please contact your local support.", "Error")
-    				exit(0)
-    	
+        #Add certificate to windows
+        if user_cert_decode != "":
+            bad_cert_password = True
+            while bad_cert_password:
+                bad_cert_password = False
+                cert_password = passwordbox("Please enter your certificate password", "Certificate Password")
+                option_certutil = " -f -user -p "
+                format_certutil = " -importpfx "
+                certutil_command = option_certutil+cert_password+format_certutil
+                certutil = "C:\Windows\System32\certutil.exe"
+                si = STARTUPINFO()
+                si.dwFlags |= STARTF_USESHOWWINDOW
+                add_cert = Popen(certutil+certutil_command+configure_eap().cert_p12, stdout=PIPE, stdin=PIPE, stderr=PIPE, startupinfo=si)
+                cert_code = add_cert.communicate()[0]
+                return_cert = add_cert.returncode
+                if return_cert == 0:
+                	msgbox("Your certificate was successfully installed, please press OK to continue.", "Success")
+                elif return_cert == -2147024810:
+                    msgbox ("The password you filled in was wrong, please try again", "BadPassword")
+                    bad_cert_password = True
+                else:
+                    msgbox("Your certificate could not be installed on your machine, please contact your local support.", "Error")
+                    exit(0)
+	
     	#add CA to the machine
-    	try:
-    		add_ca = " -addstore -user \"Root\" "
-    		Popen(certutil+add_ca+configure_eap().ca_file_binary, shell=True)
-    	except:
-    		msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
-    		exit(0)	
+        try:
+            add_ca = " -addstore -user \"Root\" "
+            Popen(certutil+add_ca+configure_eap().ca_file_binary, shell=True)
+        except:
+            msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
+            exit(0)	
     
 class MainPanel(wx.Panel):
  
