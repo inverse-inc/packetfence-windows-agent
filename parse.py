@@ -239,8 +239,9 @@ class local_computer(self):
     def set_env():	
     	#Get temp folder path user path
     	temp_path = getenv("tmp")
-    	user_logged = search(r"(.*)\\AppData", temp_path)
-    	userlocal = user_logged.group(1)
+    	#user_logged = search(r"(.*)\\AppData", temp_path)
+    	#userlocal = user_logged.group(1)
+        return temp_path #user_logged, userlocal
     def install_profile():		
     	#Create new file with data 
     	with open(create_profile().profile_file, "w") as configfile:
@@ -268,20 +269,21 @@ class local_computer(self):
 class configure_eap():		
 	#Security of the SSID
 	user_cert_decode = ""
-	if "EAPClientConfiguration" in get_profile().data:
+	if "EAPClientConfiguration" in profile_xml().fetch_profile():
 		user_auth = profile_xml().parse_profile()[0]["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
 		if user_auth == "":
 			user_auth = "certificate"
 		eap_type = profile_xml().parse_profile()[0]["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
 		if eap_type == 25:
 			root = fromstring(models().WINDOWSpeap)
+            return root
 		elif eap_type == 13:
 			root = fromstring(models().WINDOWStls)
 			payloads = [a for a in profile_xml().parse_profile()[0]["PayloadContent"] if "PayloadType" in a]
 			for type in payloads:
 				if type["PayloadType"] == "com.apple.security.pkcs12":
 					try:
-						cert_p12 = path.join(set_env().temp_path, user_auth+".p12")
+						cert_p12 = path.join(local_computer().set_env(), user_auth+".p12")
 						user_cert = type["PayloadContent"]
 						user_cert_decode = b64decode(str(user_cert))
 						tmp_cert = open(cert_p12, 'wb')
@@ -293,7 +295,7 @@ class configure_eap():
 				elif type["PayloadType"] == "com.apple.security.root":
 					try:
 						ca_name = type["PayloadCertificateFileName"]
-						ca_file_binary = path.join(set_env().temp_path, ca_name+".cer")
+						ca_file_binary = path.join(local_computer().set_env(), ca_name+".cer")
 						ca_cert = type["PayloadContent"]
 						ca_cert_decode = b64decode(str(ca_cert))
 						b64decode(str(ca_cert))
