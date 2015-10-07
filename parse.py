@@ -174,8 +174,8 @@ class profile_xml():
     def fetch_profile(self):
 	#Download mobileconfig file, convert to str
     	try:
-    		origin = urlopen("http://packetfence.org/profile.xml")
-    		data = origin.read()
+            origin = urlopen("http://packetfence.org/profile.xml")
+            data = origin.read()
             return data
     	except:
     		msgbox("The program was unable to retrieve your wireless profile, please contact your local support", "Error")
