@@ -261,9 +261,9 @@ class local_computer():
         #Remove files
         delete_file = "del /F "
         Popen(delete_file+profile_xml().create_profile()['profile_file'], shell=True)
-        if user_cert_decode != "":
-            Popen(delete_file+configure_eap().cert_p12, shell=True)
-            Popen(delete_file+configure_eap().ca_file_binary, shell=True)
+        if configure_eap()['eap_type'] == 13:
+            Popen(delete_file+configure_eap()['cert_p12'], shell=True)
+            Popen(delete_file+configure_eap()['ca_file_binary'], shell=True)
         exit(0)
 
 def configure_eap():
@@ -277,7 +277,10 @@ def configure_eap():
         eap_type = profile_xml().parse_profile()['read_profile']["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
         if eap_type == 25:
             root = fromstring(models().WINDOWSpeap)
-            return {'root':root}
+            encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+            sec_type = "WPA2"
+            encryption.text = "AES"
+            return {'root':root, 'eap_type':eap_type, 'sec_type':sec_type}
         elif eap_type == 13:
             root = fromstring(models().WINDOWStls)
             payloads = [a for a in profile_xml().parse_profile()['read_profile']["PayloadContent"] if "PayloadType" in a]
@@ -367,7 +370,8 @@ class MainPanel(wx.Panel):
 		profile_xml().parse_profile()
 		configure_eap()
 		profile_xml().create_profile()
-		certificate().install_certificate()
+		if configure_eap()['eap_type'] == 13:
+			certificate().install_certificate()
 		local_computer().install_profile()
 		local_computer().cleanup()
 		
