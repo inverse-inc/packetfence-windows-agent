@@ -239,7 +239,7 @@ class profile_xml():
 
 class local_computer():
     def set_env(self):
-    	#Get temp folder path user path
+    	#Get temp folder path
         temp_path = getenv("tmp")
         return temp_path 
     def install_profile(self):
@@ -361,7 +361,7 @@ class certificate():
     
 class MainPanel(wx.Panel):
 
-	def OnClose(self, e):
+	def ExecuteOperations(self, e):
 		profile_xml().fetch_profile()
 		local_computer().set_env()
 		profile_xml().parse_profile()
@@ -380,7 +380,7 @@ class MainPanel(wx.Panel):
 		hSizer = wx.BoxSizer(wx.HORIZONTAL)
  
 		cbtn = wx.Button(self, label='Configure', pos=(196, 144))
-		cbtn.Bind(wx.EVT_BUTTON, self.OnClose)
+		cbtn.Bind(wx.EVT_BUTTON, self.ExecuteOperations)
 		
 		self.SetSizer(hSizer)
 		self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)		
