@@ -12,7 +12,7 @@ from M2Crypto import X509
 from imageBG import bgimg
 import wx
 
-class models():
+class models:
 	WINDOWSpeap = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 		<name></name>
 		<SSIDConfig>
@@ -170,107 +170,106 @@ class models():
 	</WLANProfile>
 	"""
 
-class profile_xml():
-    def fetch_profile(self):
+class profile_xml:
+    def __init__(self):
     #Download mobileconfig file, convert to str
         try:
-            origin = urlopen("http://packetfence.org/profile.xml")
-            data = origin.read()
-            return data
+            self.origin = urlopen("http://packetfence.org/profile.xml")
+            self.data = self.origin.read()
     	except:
             msgbox("The program was unable to retrieve your wireless profile, please contact your local support", "Error")
             exit(0)
 
     def parse_profile(self):
-    #Get data from the mobileconfig file, ssid_name, security type, password, profile name, certificate
+    #Get data from the mobileconfig file, ssid_name, security type, password, profile name
         try:
-            read_profile = readPlistFromString(profile_xml().fetch_profile())
-            ssid_name = read_profile["PayloadContent"][0]["SSID_STR"]
-            sec_type = read_profile["PayloadContent"][0]["EncryptionType"]
-            wifi_key = ""
-            return {'read_profile':read_profile, 'ssid_name':ssid_name, 'sec_type':sec_type, 'wifi_key':wifi_key}
+            self.read_profile = readPlistFromString(self.data)
+            self.ssid_name = self.read_profile["PayloadContent"][0]["SSID_STR"]
+            self.sec_type = self.read_profile["PayloadContent"][0]["EncryptionType"]
+            self.wifi_key = ""
+            return {'read_profile':self.read_profile, 'ssid_name':self.ssid_name, 'sec_type':self.sec_type, 'wifi_key':self.wifi_key}
         except:
             msgbox("The program cannot read the profile data, please contact your local support", "Error")
             exit(0)
 
     def create_profile(self):
     	#Search specific fields in wintemplate and remplace it
-        root = configure_eap()['root']
-        profile_name = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
-        profile_name.text = profile_xml().parse_profile()['ssid_name']
-        profile_ssid = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
-        profile_ssid_name = profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
-        profile_ssid_name.text = profile_xml().parse_profile()['ssid_name']
-        ssid_hex = profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
-        ssid_hex.text = profile_xml().parse_profile()['ssid_name'].encode("hex")  
-        sec_section = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
-        sec_auth = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
-        onex = sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
-        eap_config = onex.findall("{http://www.microsoft.com/networking/OneX/v1}EAPConfig")[0]
-        eap_host_config = eap_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapHostConfig")[0]
+        self.root = configure_eap()['root']
+        self.profile_name = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
+        self.profile_name.text = self.parse_profile()['ssid_name']
+        self.profile_ssid = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
+        self.profile_ssid_name = self.profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
+        self.profile_ssid_name.text = self.parse_profile()['ssid_name']
+        self.ssid_hex = self.profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
+        self.ssid_hex.text = self.parse_profile()['ssid_name'].encode("hex")  
+        self.sec_section = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
+        self.sec_auth = self.sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
+        self.onex = self.sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
+        self.eap_config = self.onex.findall("{http://www.microsoft.com/networking/OneX/v1}EAPConfig")[0]
+        self.eap_host_config = self.eap_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapHostConfig")[0]
         if configure_eap()['eap_type'] == 13:
-            eap_type_key = eap_host_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
-            ca_to_trust = eap_type_key.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]
-            with open(configure_eap()['ca_file_binary'], 'rb') as read_bin_cert:
-            	cert_object = read_bin_cert.read()
-            read_bin_cert.close()
-            my_cert = X509.load_cert_der_string(cert_object)
-            ca_fingerprint = my_cert.get_fingerprint('sha1')
-            if (len(ca_fingerprint) % 2 != 0):
-            	ca_fingerprint = '0' + ca_fingerprint
-            parse_ca_fingerprint = " ".join(ca_fingerprint[i:i+2] for i in range(0, len(ca_fingerprint), 2))
-            ca_to_trust.text = parse_ca_fingerprint
+            self.eap_type_key = self.eap_host_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
+            self.ca_to_trust = self.eap_type_key.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]
+            with open(configure_eap()['ca_file_binary'], 'rb') as self.read_bin_cert:
+            	self.cert_object = self.read_bin_cert.read()
+            self.read_bin_cert.close()
+            self.my_cert = X509.load_cert_der_string(self.cert_object)
+            self.ca_fingerprint = self.my_cert.get_fingerprint('sha1')
+            if (len(self.ca_fingerprint) % 2 != 0):
+            	self.ca_fingerprint = '0' + self.ca_fingerprint
+            self.parse_ca_fingerprint = " ".join(self.ca_fingerprint[i:i+2] for i in range(0, len(self.ca_fingerprint), 2))
+            self.ca_to_trust.text = self.parse_ca_fingerprint
 	
-        if profile_xml().parse_profile()['sec_type'] == "open":
-            open_passcode = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyType")[0]
-            open_passcode.text = "networkKey"
-            sec_auth.text = "open"
+        if self.parse_profile()['sec_type'] == "open":
+            self.open_passcode = self.sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyType")[0]
+            self.open_passcode.text = "networkKey"
+            self.sec_auth.text = "open"
         else:
-            sec_auth.text = configure_eap()['sec_type']
-        if profile_xml().parse_profile()['wifi_key'] != "":
-            profile_wifi_key = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
-            profile_wifi_key.text = parse_profile()['wifi_key']
+            self.sec_auth.text = configure_eap()['sec_type']
+        if self.parse_profile()['wifi_key'] != "":
+            self.profile_wifi_key = self.sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
+            self.profile_wifi_key.text = self.parse_profile()['wifi_key']
 
         #Get the file to temp folder(right to write)
-        profile_file = path.join(local_computer().set_env(), "template-out.xml")
+        self.profile_file = path.join(local_computer().temp_path, "template-out.xml")
 
-        profile_value = tostring(root) 
-        return {'profile_value':profile_value, 'profile_file':profile_file}
+        self.profile_value = tostring(self.root) 
+        return {'profile_value':self.profile_value, 'profile_file':self.profile_file}
 
 class local_computer():
-    def set_env(self):
+    def __init__(self):
     	#Get temp folder path
-        temp_path = getenv("tmp")
-        return temp_path 
+        self.temp_path = getenv("tmp")
+
     def install_profile(self):
         #Create new file with data 
-    	with open(profile_xml().create_profile()['profile_file'], "w") as configfile:
-            configfile.write(profile_xml().create_profile()['profile_value'])
+    	with open(profile_xml().create_profile()['profile_file'], "w") as self.configfile:
+            self.configfile.write(profile_xml().create_profile()['profile_value'])
 
         #Win command to add wifi profile
         try:
-            netsh_command = "netsh wlan add profile filename="
-            Popen(netsh_command+profile_xml().create_profile()['profile_file'], shell=True)
-            success_msg = "The profile was successfully added to the machine, please select your newly added profile "+profile_xml().parse_profile()['ssid_name']+" in the Wifi networks."
-            msgbox(success_msg, "Information")
+            self.netsh_command = "netsh wlan add profile filename="
+            Popen(self.netsh_command+profile_xml().create_profile()['profile_file'], shell=True)
+            self.success_msg = "The profile was successfully added to the machine, please select your newly added profile "+profile_xml().parse_profile()['ssid_name']+" in the Wifi networks."
+            msgbox(self.success_msg, "Information")
         except:
             msgbox("The profile could not be added to your machine, please contact your local support.", "Error")
             exit(0)
  
     def cleanup(self):		
         #Remove files
-        delete_file = "del /F "
-        Popen(delete_file+profile_xml().create_profile()['profile_file'], shell=True)
+        self.delete_file = "del /F "
+        Popen(self.delete_file+profile_xml().create_profile()['profile_file'], shell=True)
         if configure_eap()['eap_type'] == 13:
-            Popen(delete_file+configure_eap()['cert_p12'], shell=True)
-            Popen(delete_file+configure_eap()['ca_file_binary'], shell=True)
+            Popen(self.delete_file+configure_eap()['cert_p12'], shell=True)
+            Popen(self.delete_file+configure_eap()['ca_file_binary'], shell=True)
         exit(0)
 
 def configure_eap():
     #Security of the SSID
     user_cert_decode = ""
     root = ""
-    if "EAPClientConfiguration" in profile_xml().fetch_profile():
+    if "EAPClientConfiguration" in profile_xml().data:
         user_auth = profile_xml().parse_profile()['read_profile']["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
         if user_auth == "":
             user_auth = "certificate"
@@ -287,7 +286,7 @@ def configure_eap():
             for type in payloads:
                 if type["PayloadType"] == "com.apple.security.pkcs12":
                     try:
-                        cert_p12 = path.join(local_computer().set_env(), user_auth+".p12")
+                        cert_p12 = path.join(local_computer(), user_auth+".p12")
                         user_cert = type["PayloadContent"]
                         user_cert_decode = b64decode(str(user_cert))
                         tmp_cert = open(cert_p12, 'wb')
@@ -299,7 +298,7 @@ def configure_eap():
                 elif type["PayloadType"] == "com.apple.security.root":
                     try:
                         ca_name = type["PayloadCertificateFileName"]
-                        ca_file_binary = path.join(local_computer().set_env(), ca_name+".cer")
+                        ca_file_binary = path.join(local_computer(), ca_name+".cer")
                         ca_cert = type["PayloadContent"]
                         ca_cert_decode = b64decode(str(ca_cert))
                         b64decode(str(ca_cert))
@@ -328,36 +327,36 @@ def configure_eap():
             encryption.text = "none"
         return {'sec_type':sec_type, 'root':root}
 
-class certificate():
+class certificate:
     def	install_certificate(self):
         #Add certificate to windows
         if configure_eap()['user_cert_decode'] != "":
-            bad_cert_password = True
-            while bad_cert_password:
-                bad_cert_password = False
-                cert_password = passwordbox("Please enter your certificate password", "Certificate Password")
-                option_certutil = " -f -user -p "
-                format_certutil = " -importpfx "
-                certutil_command = option_certutil+cert_password+format_certutil
-                certutil = "C:\Windows\System32\certutil.exe"
-                si = STARTUPINFO()
-                si.dwFlags |= STARTF_USESHOWWINDOW
-                add_cert = Popen(certutil+certutil_command+configure_eap()['cert_p12'], stdout=PIPE, stdin=PIPE, stderr=PIPE, startupinfo=si)
-                cert_code = add_cert.communicate()[0]
-                return_cert = add_cert.returncode
-                if return_cert == 0:
+            self.bad_cert_password = True
+            while self.bad_cert_password:
+                self.bad_cert_password = False
+                self.cert_password = passwordbox("Please enter your certificate password", "Certificate Password")
+                self.option_certutil = " -f -user -p "
+                self.format_certutil = " -importpfx "
+                self.certutil_command = self.option_certutil+self.cert_password+self.format_certutil
+                self.certutil = "C:\Windows\System32\certutil.exe"
+                self.si = STARTUPINFO()
+                self.si.dwFlags |= STARTF_USESHOWWINDOW
+                self.add_cert = Popen(self.certutil+self.certutil_command+configure_eap()['cert_p12'], stdout=PIPE, stdin=PIPE, stderr=PIPE, startupinfo=self.si)
+                self.cert_code = self.add_cert.communicate()[0]
+                self.return_cert = self.add_cert.returncode
+                if self.return_cert == 0:
                 	msgbox("Your certificate was successfully installed, please press OK to continue.", "Success")
-                elif return_cert == -2147024810:
+                elif self.return_cert == -2147024810:
                     msgbox ("The password you filled in was wrong, please try again", "BadPassword")
-                    bad_cert_password = True
+                    self.bad_cert_password = True
                 else:
                     msgbox("Your certificate could not be installed on your machine, please contact your local support.", "Error")
                     exit(0)
 	
     	#add CA to the machine
         try:
-            add_ca = " -addstore -user \"Root\" "
-            Popen(certutil+add_ca+configure_eap()['ca_file_binary'], shell=True)
+            self.add_ca = " -addstore -user \"Root\" "
+            Popen(certutil+self.add_ca+configure_eap()['ca_file_binary'], shell=True)
         except:
             msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
             exit(0)	
@@ -365,11 +364,6 @@ class certificate():
 class MainPanel(wx.Panel):
 
 	def ExecuteOperations(self, e):
-		profile_xml().fetch_profile()
-		local_computer().set_env()
-		profile_xml().parse_profile()
-		configure_eap()
-		profile_xml().create_profile()
 		if configure_eap()['eap_type'] == 13:
 			certificate().install_certificate()
 		local_computer().install_profile()
