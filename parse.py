@@ -20,7 +20,7 @@ def parsing():
 				<hex></hex>
 				<name></name>
 			</SSID>
-			<nonBroadcast>false</nonBroadcast>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>auto</connectionMode>
@@ -86,7 +86,7 @@ def parsing():
 				<hex></hex>
 				<name></name>
 			</SSID>
-			<nonBroadcast>false</nonBroadcast>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>auto</connectionMode>
