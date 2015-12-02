@@ -315,12 +315,13 @@ def parsing():
 				exit(0)
 	
 	#add CA to the machine
-	try:
-		add_ca = " -addstore -user \"Root\" "
-		Popen(certutil+add_ca+ca_file_binary, shell=True)
-	except:
-		msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
-		exit(0)	
+	if eap_type == 13:
+		try:
+			add_ca = " -addstore -user \"Root\" "
+			Popen(certutil+add_ca+ca_file_binary, shell=True)
+		except:
+			msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
+			exit(0)	
 	
 	#Create new file with data 
 	with open(profile_file, "w") as configfile:

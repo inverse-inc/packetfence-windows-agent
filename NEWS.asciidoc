@@ -28,3 +28,5 @@ Version 1.2
 Set nonBroadcast to true, force the option "Connect even if this network is not broadcasting its name (SSID)" to be enable at all time.
 
 Rename icone to icon.
+
+fixed a Case where PEAP was not handle properly
