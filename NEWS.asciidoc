@@ -21,3 +21,10 @@ Version 1.1
 ~~~~~~~~~~~
 
 Added EAP-TLS support, certificate instalation, errors handling.
+
+Version 1.2
+~~~~~~~~~~~
+
+Set nonBroadcast to true, force the option "Connect even if this network is not broadcasting its name (SSID)" to be enable at all time.
+
+Rename icone to icon.
