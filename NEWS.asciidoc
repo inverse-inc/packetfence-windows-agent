@@ -25,7 +25,7 @@ Added EAP-TLS support, certificate instalation, errors handling.
 Version 1.2
 ~~~~~~~~~~~
 
-Set nonBroadcast to true, force the option "Connect even if this network is not broadcasting its name (SSID)" to be enable at all time.
+Added case handle for the ssid visibility, take into account is the ssid is hidden or not, matching option "Connect even if this network is not broadcasting its name (SSID)" in Windows configuration.
 
 Rename icone to icon.
 
