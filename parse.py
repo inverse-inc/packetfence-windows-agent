@@ -20,7 +20,7 @@ class models:
 				<hex></hex>
 				<name></name>
 			</SSID>
-			<nonBroadcast>false</nonBroadcast>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>auto</connectionMode>
@@ -63,7 +63,7 @@ class models:
 										<EnableQuarantineChecks>false</EnableQuarantineChecks>
 										<RequireCryptoBinding>false</RequireCryptoBinding>
 										<PeapExtensions>
-											<PerformServerValidation xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">true</PerformServerValidation>
+											<PerformServerValidation xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">false</PerformServerValidation>
 											<AcceptServerName xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">false</AcceptServerName>
 											<PeapExtensionsV2 xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">
 												<AllowPromptingWhenServerCANotFound xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV3">true</AllowPromptingWhenServerCANotFound>
@@ -86,7 +86,7 @@ class models:
 				<hex></hex>
 				<name></name>
 			</SSID>
-			<nonBroadcast>false</nonBroadcast>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>auto</connectionMode>
@@ -186,8 +186,9 @@ class profile_xml:
             self.read_profile = readPlistFromString(self.data)
             self.ssid_name = self.read_profile["PayloadContent"][0]["SSID_STR"]
             self.sec_type = self.read_profile["PayloadContent"][0]["EncryptionType"]
+            self.ssid_broadcast = self.read_profile["PayloadContent"][0]["HIDDEN_NETWORK"]
             self.wifi_key = ""
-            return {'read_profile':self.read_profile, 'ssid_name':self.ssid_name, 'sec_type':self.sec_type, 'wifi_key':self.wifi_key}
+            return {'read_profile':self.read_profile, 'ssid_name':self.ssid_name, 'sec_type':self.sec_type, 'wifi_key':self.wifi_key, 'ssid_broadcast':self.ssid_broadcast}
         except:
             msgbox("The program cannot read the profile data, please contact your local support", "Error")
             exit(0)
@@ -202,6 +203,12 @@ class profile_xml:
         self.profile_ssid_name.text = self.parse_profile()['ssid_name']
         self.ssid_hex = self.profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
         self.ssid_hex.text = self.parse_profile()['ssid_name'].encode("hex")  
+        self.is_ssid_broadcast = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}nonBroadcast")[0]
+        if self.parse_profile()['ssid_broadcast'] == True:
+            self.ssid_broadcast = 'true'
+        elif self.parse_profile()['ssid_broadcast'] == False:
+            self.ssid_broadcast = 'false'
+        self.is_ssid_broadcast.text = self.ssid_broadcast
         self.sec_section = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
         self.sec_auth = self.sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
         self.onex = self.sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
@@ -236,7 +243,7 @@ class profile_xml:
         self.profile_value = tostring(self.root) 
         return {'profile_value':self.profile_value, 'profile_file':self.profile_file}
 
-class local_computer():
+class local_computer:
     def __init__(self):
     	#Get temp folder path
         self.temp_path = getenv("tmp")
@@ -286,9 +293,11 @@ def configure_eap():
             for type in payloads:
                 if type["PayloadType"] == "com.apple.security.pkcs12":
                     try:
-                        cert_p12 = path.join(local_computer(), user_auth+".p12")
+                        cert_p12 = path.join(local_computer().temp_path, user_auth+".p12")
+                        print cert_p12
                         user_cert = type["PayloadContent"]
                         user_cert_decode = b64decode(str(user_cert))
+                        print user_cert_decode
                         tmp_cert = open(cert_p12, 'wb')
                         tmp_cert.write(user_cert_decode)
                         tmp_cert.close()
@@ -298,7 +307,7 @@ def configure_eap():
                 elif type["PayloadType"] == "com.apple.security.root":
                     try:
                         ca_name = type["PayloadCertificateFileName"]
-                        ca_file_binary = path.join(local_computer(), ca_name+".cer")
+                        ca_file_binary = path.join(local_computer().temp_path, ca_name+".cer")
                         ca_cert = type["PayloadContent"]
                         ca_cert_decode = b64decode(str(ca_cert))
                         b64decode(str(ca_cert))
