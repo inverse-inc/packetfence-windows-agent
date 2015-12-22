@@ -294,10 +294,8 @@ def configure_eap():
                 if type["PayloadType"] == "com.apple.security.pkcs12":
                     try:
                         cert_p12 = path.join(local_computer().temp_path, user_auth+".p12")
-                        print cert_p12
                         user_cert = type["PayloadContent"]
                         user_cert_decode = b64decode(str(user_cert))
-                        print user_cert_decode
                         tmp_cert = open(cert_p12, 'wb')
                         tmp_cert.write(user_cert_decode)
                         tmp_cert.close()
