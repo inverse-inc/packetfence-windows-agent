@@ -363,7 +363,7 @@ class certificate:
     	#add CA to the machine
         try:
             self.add_ca = " -addstore -user \"Root\" "
-            Popen(certutil+self.add_ca+configure_eap()['ca_file_binary'], shell=True)
+            Popen(self.certutil+self.add_ca+configure_eap()['ca_file_binary'], shell=True)
         except:
             msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
             exit(0)	
