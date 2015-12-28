@@ -371,7 +371,7 @@ class certificate:
     
 class MainPanel(wx.Panel):
 
-	def ExecuteOperations(self, e, data):
+    def ExecuteOperations(self, e, data):
         self.data = get_profile()
         if configure_eap()['eap_type'] == 13:
             certificate().install_certificate()
