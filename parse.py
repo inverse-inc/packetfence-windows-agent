@@ -1,6 +1,6 @@
 #Python program for autoconfig wireless network on windows 7/8
 from os import path, getenv
-from urllib2 import urlopen
+import requests import get, text
 from xml.etree.ElementTree import fromstring, tostring
 from plistlib import readPlistFromString
 from re import search
@@ -170,17 +170,18 @@ class models:
 	</WLANProfile>
 	"""
 
-class profile_xml:
+class get_profile:
     def __init__(self):
     #Download mobileconfig file, convert to str
         try:
-            self.origin = urlopen("http://packetfence.org/profile.xml")
+            self.origin = requests.get("http://packetfence.org/profile.xml")
             self.data = self.origin.read()
     	except:
             msgbox("The program was unable to retrieve your wireless profile, please contact your local support", "Error")
             exit(0)
 
-    def parse_profile(self):
+class profile_xml:
+    def parse_profile(self, data):
     #Get data from the mobileconfig file, ssid_name, security type, password, profile name
         try:
             self.read_profile = readPlistFromString(self.data)
@@ -272,11 +273,11 @@ class local_computer:
             Popen(self.delete_file+configure_eap()['ca_file_binary'], shell=True)
         exit(0)
 
-def configure_eap():
+def configure_eap(data):
     #Security of the SSID
     user_cert_decode = ""
     root = ""
-    if "EAPClientConfiguration" in profile_xml().data:
+    if "EAPClientConfiguration" in data:
         user_auth = profile_xml().parse_profile()['read_profile']["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
         if user_auth == "":
             user_auth = "certificate"
@@ -370,7 +371,8 @@ class certificate:
     
 class MainPanel(wx.Panel):
 
-	def ExecuteOperations(self, e):
+	def ExecuteOperations(self, e, data):
+        self.data = get_profile()
 		if configure_eap()['eap_type'] == 13:
 			certificate().install_certificate()
 		local_computer().install_profile()
