@@ -380,7 +380,7 @@ class MainPanel(wx.Panel):
 
     def __init__(self, parent):
         """Constructor"""
-		wx.Panel.__init__(self, parent=parent)
+        wx.Panel.__init__(self, parent=parent)
         self.frame = parent
         
         sizer = wx.BoxSizer(wx.VERTICAL)
