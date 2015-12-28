@@ -1,6 +1,6 @@
 #Python program for autoconfig wireless network on windows 7/8
 from os import path, getenv
-import requests import get, text
+import requests
 from xml.etree.ElementTree import fromstring, tostring
 from plistlib import readPlistFromString
 from re import search
@@ -373,39 +373,39 @@ class MainPanel(wx.Panel):
 
 	def ExecuteOperations(self, e, data):
         self.data = get_profile()
-		if configure_eap()['eap_type'] == 13:
-			certificate().install_certificate()
-		local_computer().install_profile()
-		local_computer().cleanup()
-		
-	def __init__(self, parent):
-		"""Constructor"""
+        if configure_eap()['eap_type'] == 13:
+            certificate().install_certificate()
+        local_computer().install_profile()
+        local_computer().cleanup()
+
+    def __init__(self, parent):
+        """Constructor"""
 		wx.Panel.__init__(self, parent=parent)
-		self.frame = parent
- 
-		sizer = wx.BoxSizer(wx.VERTICAL)
-		hSizer = wx.BoxSizer(wx.HORIZONTAL)
- 
-		cbtn = wx.Button(self, label='Configure', pos=(196, 144))
-		cbtn.Bind(wx.EVT_BUTTON, self.ExecuteOperations)
-		
-		self.SetSizer(hSizer)
-		self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)		
-				
-	def OnEraseBackground(self, evt):
-		"""
-		Background Image
-		"""
-		dc = evt.GetDC()
- 
-		if not dc:
-			dc = wx.ClientDC(self)
-			rect = self.GetUpdateRegion().GetBox()
-			dc.SetClippingRect(rect)
-		dc.Clear()
-		img = bgimg.GetImage()
-		bmp = img.ConvertToBitmap()
-		dc.DrawBitmap(bmp, 0, 0)
+        self.frame = parent
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        hSizer = wx.BoxSizer(wx.HORIZONTAL)
+        
+        cbtn = wx.Button(self, label='Configure', pos=(196, 144))
+        cbtn.Bind(wx.EVT_BUTTON, self.ExecuteOperations)
+        
+        self.SetSizer(hSizer)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)		
+	
+    def OnEraseBackground(self, evt):
+        """
+        Background Image
+        """
+        dc = evt.GetDC()
+
+        if not dc:
+            dc = wx.ClientDC(self)
+            rect = self.GetUpdateRegion().GetBox()
+            dc.SetClippingRect(rect)
+        dc.Clear()
+        img = bgimg.GetImage()
+        bmp = img.ConvertToBitmap()
+        dc.DrawBitmap(bmp, 0, 0)
  
  
 ########################################################################
