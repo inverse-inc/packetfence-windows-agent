@@ -170,21 +170,45 @@ class models:
 	</WLANProfile>
 	"""
 
-class get_profile:
+class profile(myprofile):
+    read_profile = ""
+    ssid_name = ""
+    sec_type = ""
+    ssid_broadcast = ""
+    wifi_key = ""
+    data = ""
     def __init__(self):
+    #Execute method from profile
+        try:
+            download_profile()
+            read_profile(myprofile)
+            parse_profile(myprofile)
+        except:
+            msgbox("")
+    
+    
+    def download(self):
     #Download mobileconfig file, convert to str
         try:
             self.origin = requests.get("http://packetfence.org/profile.xml")
-            self.data = self.origin.read()
+            self.data = self.origin.text
     	except:
             msgbox("The program was unable to retrieve your wireless profile, please contact your local support", "Error")
             exit(0)
 
-class profile_xml:
+
+    def read_profile(self, data):
+    #converting the download to object
+        try:
+            self.readp = readPlistFromString(data)
+        except:
+            msgbox("The program could not parse the profile, please contact your local support", "Error")
+            exit(0)
+
     def parse_profile(self, data):
     #Get data from the mobileconfig file, ssid_name, security type, password, profile name
         try:
-            self.read_profile = readPlistFromString(self.data)
+            self.read_profile = readp
             self.ssid_name = self.read_profile["PayloadContent"][0]["SSID_STR"]
             self.sec_type = self.read_profile["PayloadContent"][0]["EncryptionType"]
             self.ssid_broadcast = self.read_profile["PayloadContent"][0]["HIDDEN_NETWORK"]
@@ -194,6 +218,7 @@ class profile_xml:
             msgbox("The program cannot read the profile data, please contact your local support", "Error")
             exit(0)
 
+class we:
     def create_profile(self):
     	#Search specific fields in wintemplate and remplace it
         self.root = configure_eap()['root']
@@ -371,8 +396,8 @@ class certificate:
     
 class MainPanel(wx.Panel):
 
-    def ExecuteOperations(self, e, data):
-        self.data = get_profile()
+    def ExecuteOperations(self, data):
+        self.data = parse_xml(data)
         if configure_eap()['eap_type'] == 13:
             certificate().install_certificate()
         local_computer().install_profile()
@@ -408,7 +433,7 @@ class MainPanel(wx.Panel):
         dc.DrawBitmap(bmp, 0, 0)
  
  
-########################################################################
+
 class MainFrame(wx.Frame):
  
 	def __init__(self):
