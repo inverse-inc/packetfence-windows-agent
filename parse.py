@@ -217,7 +217,10 @@ class Profile(object):
 
 class Configure(object):
     root = ""
+    profile_file = ""
+    profile_value = ""
     ca_file_binary = ""
+    cert_p12 = ""
     def configure_eap(self, data):
         #Security of the SSID
         self.user_cert_decode = ""
@@ -229,7 +232,7 @@ class Configure(object):
             #return {'root':root, 'eap_type':eap_type, 'sec_type':sec_type}
         elif P.eap_type == 13:
             C.root = fromstring(M.WINDOWStls)
-            self.payloads = [a for a in P.parse_profile(P.readp)['read_profile']["PayloadContent"] if "PayloadType" in a]
+            self.payloads = [a for a in P.readp["PayloadContent"] if "PayloadType" in a]
             for type in self.payloads:
                 if type["PayloadType"] == "com.apple.security.pkcs12":
                     try:
@@ -260,7 +263,7 @@ class Configure(object):
             #return {'root':root, 'sec_type':sec_type, 'eap_type':eap_type, 'ca_file_binary':ca_file_binary, 'cert_p12':cert_p12, 'user_cert_decode':user_cert_decode}
         else:
             C.root = fromstring(M.WINDOWSopen)
-            P.wifi_key = P.parse_profile()['read_profile']["PayloadContent"][0]["Password"]
+            P.wifi_key = P.readp["PayloadContent"][0]["Password"]
             self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
             if P.sec_type == "WEP":
                 P.sec_type = "open"
@@ -322,23 +325,22 @@ class Configure(object):
         self.profile_file = path.join(LC.temp_path, "template-out.xml")
 
         self.profile_value = tostring(C.root) 
-        #return {'profile_value':self.profile_value, 'profile_file':self.profile_file}
 
-class local_computer:
+class local_computer(object):
     def __init__(self):
     	#Get temp folder path
-        self.temp_path = getenv("tmp")
+        temp_path = getenv("tmp")
 
-    def install_profile(self):
+    def install_profile(self, profil_value):
         #Create new file with data 
-    	with open(profile_xml().create_profile()['profile_file'], "w") as self.configfile:
-            self.configfile.write(profile_xml().create_profile()['profile_value'])
+    	with open(C.profile_file, "w") as self.configfile:
+            self.configfile.write(C.profile_value)
 
         #Win command to add wifi profile
         try:
             self.netsh_command = "netsh wlan add profile filename="
-            Popen(self.netsh_command+profile_xml().create_profile()['profile_file'], shell=True)
-            self.success_msg = "The profile was successfully added to the machine, please select your newly added profile "+profile_xml().parse_profile()['ssid_name']+" in the Wifi networks."
+            Popen(self.netsh_command+C.profile_file, shell=True)
+            self.success_msg = "The profile was successfully added to the machine, please select your newly added profile "+P.ssid_name+" in the Wifi networks."
             msgbox(self.success_msg, "Information")
         except:
             msgbox("The profile could not be added to your machine, please contact your local support.", "Error")
@@ -347,16 +349,16 @@ class local_computer:
     def cleanup(self):		
         #Remove files
         self.delete_file = "del /F "
-        Popen(self.delete_file+profile_xml().create_profile()['profile_file'], shell=True)
-        if configure_eap()['eap_type'] == 13:
-            Popen(self.delete_file+configure_eap()['cert_p12'], shell=True)
-            Popen(self.delete_file+configure_eap()['ca_file_binary'], shell=True)
+        Popen(self.delete_file+P.profile_file, shell=True)
+        if P.eap_type == 13:
+            Popen(self.delete_file+C.cert_p12, shell=True)
+            Popen(self.delete_file+C.ca_file_binary, shell=True)
         exit(0)
 
-class certificate:
+class certificate(object):
     def	install_certificate(self):
         #Add certificate to windows
-        if configure_eap()['user_cert_decode'] != "":
+        if C.user_cert_decode != "":
             self.bad_cert_password = True
             while self.bad_cert_password:
                 self.bad_cert_password = False
@@ -367,7 +369,7 @@ class certificate:
                 self.certutil = "C:\Windows\System32\certutil.exe"
                 self.si = STARTUPINFO()
                 self.si.dwFlags |= STARTF_USESHOWWINDOW
-                self.add_cert = Popen(self.certutil+self.certutil_command+configure_eap()['cert_p12'], stdout=PIPE, stdin=PIPE, stderr=PIPE, startupinfo=self.si)
+                self.add_cert = Popen(self.certutil+self.certutil_command+C.cert_p12, stdout=PIPE, stdin=PIPE, stderr=PIPE, startupinfo=self.si)
                 self.cert_code = self.add_cert.communicate()[0]
                 self.return_cert = self.add_cert.returncode
                 if self.return_cert == 0:
@@ -382,7 +384,7 @@ class certificate:
     	#add CA to the machine
         try:
             self.add_ca = " -addstore -user \"Root\" "
-            Popen(self.certutil+self.add_ca+configure_eap()['ca_file_binary'], shell=True)
+            Popen(self.certutil+self.add_ca+C.ca_file_binary, shell=True)
         except:
             msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
             exit(0)	
@@ -395,12 +397,11 @@ Cer = Certificate()
    
 class MainPanel(wx.Panel):
 
-    def ExecuteOperations(self, data):
-        self.data = parse_xml(data)
-        if configure_eap()['eap_type'] == 13:
-            certificate().install_certificate()
-        local_computer().install_profile()
-        local_computer().cleanup()
+    def ExecuteOperations(self, profile_value):
+        if P.eap_type == 13:
+            Cer.install_certificate()
+        LC.install_profile(C.profile_value)
+        LC.cleanup()
 
     def __init__(self, parent):
         """Constructor"""
