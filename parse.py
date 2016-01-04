@@ -326,7 +326,7 @@ class Configure(object):
 
         self.profile_value = tostring(C.root) 
 
-class local_computer(object):
+class LocalComputer(object):
     def __init__(self):
     	#Get temp folder path
         temp_path = getenv("tmp")
@@ -355,7 +355,7 @@ class local_computer(object):
             Popen(self.delete_file+C.ca_file_binary, shell=True)
         exit(0)
 
-class certificate(object):
+class Certificate(object):
     def	install_certificate(self):
         #Add certificate to windows
         if C.user_cert_decode != "":
