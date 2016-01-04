@@ -1,5 +1,5 @@
 Packetfence-Windows-Agent NEWS
-================
+==============================
 
 Project homepage: https://www.packetfence.org/
 
@@ -10,19 +10,19 @@ Interested in contributing to the project? http://www.packetfence.org/support/co
 This is a list of noteworthy changes across releases.
 For more details and developer visible changes see the ChangeLog file.
 
-Version 1-0
+Version 1.0
 ~~~~~~~~~~~
 
 The windows agent allow you to connect to packetfence and autoconfigure a Wifi network which can have a hidden SSID, after launch and configure, the client only need to login with his credentials. 
 
 Works on windows vista, 7 and 8.
 
-Version 1-1
+Version 1.1
 ~~~~~~~~~~~
 
 Added EAP-TLS support, certificate instalation, errors handling.
 
-Version 1-2
+Version 1.2
 ~~~~~~~~~~~
 
 Added case handle for the ssid visibility, take into account is the ssid is hidden or not, matching option "Connect even if this network is not broadcasting its name (SSID)" in Windows configuration.
@@ -31,7 +31,7 @@ Rename icone to icon.
 
 Fixed a case where PEAP was not handle properly(trying to install CA).
 
-Version 1-3
+Version 1.3
 ~~~~~~~~~~~
 
-OOP rework.
+OOP rework. Changed logic.
