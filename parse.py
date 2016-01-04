@@ -205,7 +205,7 @@ class Profile(object):
             self.ssid_name = self.read_profile["PayloadContent"][0]["SSID_STR"]
             self.sec_type = self.read_profile["PayloadContent"][0]["EncryptionType"]
             self.ssid_broadcast = self.read_profile["PayloadContent"][0]["HIDDEN_NETWORK"]
-            if "EAPClientConfiguration" in P.readp:
+            if "EAPClientConfiguration" in P.data:
                 self.user_auth = self.read_profile["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
                 if self.user_auth == "":
                     self.user_auth = "certificate"
@@ -221,7 +221,7 @@ class Configure(object):
     profile_value = ""
     ca_file_binary = ""
     cert_p12 = ""
-    def configure_eap(self, data):
+    def configure_eap(self, P):
         #Security of the SSID
         self.user_cert_decode = ""
         if P.eap_type == 25:
@@ -229,7 +229,6 @@ class Configure(object):
             self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
             P.sec_type = "WPA2"
             self.encryption.text = "AES"
-            #return {'root':root, 'eap_type':eap_type, 'sec_type':sec_type}
         elif P.eap_type == 13:
             C.root = fromstring(M.WINDOWStls)
             self.payloads = [a for a in P.readp["PayloadContent"] if "PayloadType" in a]
@@ -260,10 +259,9 @@ class Configure(object):
             self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
             P.sec_type = "WPA2"
             self.encryption.text = "AES"
-            #return {'root':root, 'sec_type':sec_type, 'eap_type':eap_type, 'ca_file_binary':ca_file_binary, 'cert_p12':cert_p12, 'user_cert_decode':user_cert_decode}
         else:
             C.root = fromstring(M.WINDOWSopen)
-            P.wifi_key = P.readp["PayloadContent"][0]["Password"]
+            self.wifi_key = P.readp["PayloadContent"][0]["Password"]
             self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
             if P.sec_type == "WEP":
                 P.sec_type = "open"
@@ -274,8 +272,6 @@ class Configure(object):
             else:
                 P.sec_type = "open"
                 self.encryption.text = "none"
-            #return {'sec_type':sec_type, 'root':root}
-
 
     def create_profile(self):
     	#Search specific fields in wintemplate and remplace it
@@ -327,11 +323,12 @@ class Configure(object):
         self.profile_value = tostring(C.root) 
 
 class LocalComputer(object):
+    temp_path = ""
     def __init__(self):
     	#Get temp folder path
         temp_path = getenv("tmp")
 
-    def install_profile(self, profil_value):
+    def install_profile(self):
         #Create new file with data 
     	with open(C.profile_file, "w") as self.configfile:
             self.configfile.write(C.profile_value)
@@ -349,7 +346,7 @@ class LocalComputer(object):
     def cleanup(self):		
         #Remove files
         self.delete_file = "del /F "
-        Popen(self.delete_file+P.profile_file, shell=True)
+        Popen(self.delete_file+C.profile_file, shell=True)
         if P.eap_type == 13:
             Popen(self.delete_file+C.cert_p12, shell=True)
             Popen(self.delete_file+C.ca_file_binary, shell=True)
@@ -398,9 +395,14 @@ Cer = Certificate()
 class MainPanel(wx.Panel):
 
     def ExecuteOperations(self, profile_value):
+        P.download()
+        P.read_profile(P.data)
+        P.parse_profile(P.readp)
+        C.configure_eap(P)
+        C.create_profile()
         if P.eap_type == 13:
             Cer.install_certificate()
-        LC.install_profile(C.profile_value)
+        LC.install_profile()
         LC.cleanup()
 
     def __init__(self, parent):
