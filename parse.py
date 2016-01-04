@@ -12,7 +12,7 @@ from M2Crypto import X509
 from imageBG import bgimg
 import wx
 
-class models:
+class Models:
 	WINDOWSpeap = """<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 		<name></name>
 		<SSIDConfig>
@@ -170,28 +170,21 @@ class models:
 	</WLANProfile>
 	"""
 
-class profile(myprofile):
+class Profile(object):
     read_profile = ""
     ssid_name = ""
     sec_type = ""
     ssid_broadcast = ""
     wifi_key = ""
     data = ""
-    def __init__(self):
-    #Execute method from profile
-        try:
-            download_profile()
-            read_profile(myprofile)
-            parse_profile(myprofile)
-        except:
-            msgbox("")
-    
-    
+    readp = ""
+    user_auth = ""
+    eap_type = ""
     def download(self):
     #Download mobileconfig file, convert to str
         try:
             self.origin = requests.get("http://packetfence.org/profile.xml")
-            self.data = self.origin.text
+            P.data = self.origin.text
     	except:
             msgbox("The program was unable to retrieve your wireless profile, please contact your local support", "Error")
             exit(0)
@@ -200,39 +193,101 @@ class profile(myprofile):
     def read_profile(self, data):
     #converting the download to object
         try:
-            self.readp = readPlistFromString(data)
+            P.readp = readPlistFromString(P.data)
         except:
             msgbox("The program could not parse the profile, please contact your local support", "Error")
             exit(0)
 
-    def parse_profile(self, data):
+    def parse_profile(self, readp):
     #Get data from the mobileconfig file, ssid_name, security type, password, profile name
         try:
-            self.read_profile = readp
+            self.read_profile = P.readp
             self.ssid_name = self.read_profile["PayloadContent"][0]["SSID_STR"]
             self.sec_type = self.read_profile["PayloadContent"][0]["EncryptionType"]
             self.ssid_broadcast = self.read_profile["PayloadContent"][0]["HIDDEN_NETWORK"]
-            self.wifi_key = ""
-            return {'read_profile':self.read_profile, 'ssid_name':self.ssid_name, 'sec_type':self.sec_type, 'wifi_key':self.wifi_key, 'ssid_broadcast':self.ssid_broadcast}
+            if "EAPClientConfiguration" in P.readp:
+                self.user_auth = self.read_profile["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
+                if self.user_auth == "":
+                    self.user_auth = "certificate"
+                self.eap_type = self.read_profile["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
+
         except:
             msgbox("The program cannot read the profile data, please contact your local support", "Error")
             exit(0)
 
-class we:
+class Configure(object):
+    root = ""
+    ca_file_binary = ""
+    def configure_eap(self, data):
+        #Security of the SSID
+        self.user_cert_decode = ""
+        if P.eap_type == 25:
+            C.root = fromstring(M.WINDOWSpeap)
+            self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+            P.sec_type = "WPA2"
+            self.encryption.text = "AES"
+            #return {'root':root, 'eap_type':eap_type, 'sec_type':sec_type}
+        elif P.eap_type == 13:
+            C.root = fromstring(M.WINDOWStls)
+            self.payloads = [a for a in P.parse_profile(P.readp)['read_profile']["PayloadContent"] if "PayloadType" in a]
+            for type in self.payloads:
+                if type["PayloadType"] == "com.apple.security.pkcs12":
+                    try:
+                        self.cert_p12 = path.join(LC.temp_path, P.user_auth+".p12")
+                        self.user_cert = type["PayloadContent"]
+                        self.user_cert_decode = b64decode(str(self.user_cert))
+                        self.tmp_cert = open(self.cert_p12, 'wb')
+                        self.tmp_cert.write(self.user_cert_decode)
+                        self.tmp_cert.close()
+                    except:
+                        msgbox("Your personal certificate file could not be generated, please contact your local support.","Error")
+                        exit(0)
+                elif type["PayloadType"] == "com.apple.security.root":
+                    try:
+                        self.ca_name = type["PayloadCertificateFileName"]
+                        self.ca_file_binary = path.join(LC.temp_path, self.ca_name+".cer")
+                        self.ca_cert = type["PayloadContent"]
+                        self.ca_cert_decode = b64decode(str(self.ca_cert))
+                        self.tmp_ca = open(self.ca_file_binary, 'wb')
+                        self.tmp_ca.write(self.ca_cert_decode)
+                        self.tmp_ca.close()
+                    except:
+                        msgbox("The certificate of Authority file could not be generated, please contact your local support.","Error")
+                        exit(0)
+            self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+            P.sec_type = "WPA2"
+            self.encryption.text = "AES"
+            #return {'root':root, 'sec_type':sec_type, 'eap_type':eap_type, 'ca_file_binary':ca_file_binary, 'cert_p12':cert_p12, 'user_cert_decode':user_cert_decode}
+        else:
+            C.root = fromstring(M.WINDOWSopen)
+            P.wifi_key = P.parse_profile()['read_profile']["PayloadContent"][0]["Password"]
+            self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
+            if P.sec_type == "WEP":
+                P.sec_type = "open"
+                self.encryption.text = "WEP"
+            elif P.sec_type == "WPA":
+                P.sec_type = "WPA2PSK"
+                self.encryption.text = "AES"
+            else:
+                P.sec_type = "open"
+                self.encryption.text = "none"
+            #return {'sec_type':sec_type, 'root':root}
+
+
     def create_profile(self):
     	#Search specific fields in wintemplate and remplace it
-        self.root = configure_eap()['root']
+        self.root = C.root
         self.profile_name = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
-        self.profile_name.text = self.parse_profile()['ssid_name']
+        self.profile_name.text = P.ssid_name
         self.profile_ssid = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}SSID")[0]
         self.profile_ssid_name = self.profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
-        self.profile_ssid_name.text = self.parse_profile()['ssid_name']
+        self.profile_ssid_name.text = P.ssid_name
         self.ssid_hex = self.profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
-        self.ssid_hex.text = self.parse_profile()['ssid_name'].encode("hex")  
+        self.ssid_hex.text = P.ssid_name.encode("hex")  
         self.is_ssid_broadcast = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}nonBroadcast")[0]
-        if self.parse_profile()['ssid_broadcast'] == True:
+        if P.ssid_broadcast == True:
             self.ssid_broadcast = 'true'
-        elif self.parse_profile()['ssid_broadcast'] == False:
+        elif P.ssid_broadcast == False:
             self.ssid_broadcast = 'false'
         self.is_ssid_broadcast.text = self.ssid_broadcast
         self.sec_section = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
@@ -240,10 +295,10 @@ class we:
         self.onex = self.sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
         self.eap_config = self.onex.findall("{http://www.microsoft.com/networking/OneX/v1}EAPConfig")[0]
         self.eap_host_config = self.eap_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapHostConfig")[0]
-        if configure_eap()['eap_type'] == 13:
+        if P.eap_type == 13:
             self.eap_type_key = self.eap_host_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
             self.ca_to_trust = self.eap_type_key.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]
-            with open(configure_eap()['ca_file_binary'], 'rb') as self.read_bin_cert:
+            with open(C.ca_file_binary, 'rb') as self.read_bin_cert:
             	self.cert_object = self.read_bin_cert.read()
             self.read_bin_cert.close()
             self.my_cert = X509.load_cert_der_string(self.cert_object)
@@ -253,21 +308,21 @@ class we:
             self.parse_ca_fingerprint = " ".join(self.ca_fingerprint[i:i+2] for i in range(0, len(self.ca_fingerprint), 2))
             self.ca_to_trust.text = self.parse_ca_fingerprint
 	
-        if self.parse_profile()['sec_type'] == "open":
+        if P.sec_type == "open":
             self.open_passcode = self.sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyType")[0]
             self.open_passcode.text = "networkKey"
             self.sec_auth.text = "open"
         else:
-            self.sec_auth.text = configure_eap()['sec_type']
-        if self.parse_profile()['wifi_key'] != "":
+            self.sec_auth.text = P.sec_type
+        if P.wifi_key != "":
             self.profile_wifi_key = self.sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}sharedKey/{http://www.microsoft.com/networking/WLAN/profile/v1}keyMaterial")[0]
-            self.profile_wifi_key.text = self.parse_profile()['wifi_key']
+            self.profile_wifi_key.text = P.wifi_key
 
         #Get the file to temp folder(right to write)
-        self.profile_file = path.join(local_computer().temp_path, "template-out.xml")
+        self.profile_file = path.join(LC.temp_path, "template-out.xml")
 
-        self.profile_value = tostring(self.root) 
-        return {'profile_value':self.profile_value, 'profile_file':self.profile_file}
+        self.profile_value = tostring(C.root) 
+        #return {'profile_value':self.profile_value, 'profile_file':self.profile_file}
 
 class local_computer:
     def __init__(self):
@@ -297,68 +352,6 @@ class local_computer:
             Popen(self.delete_file+configure_eap()['cert_p12'], shell=True)
             Popen(self.delete_file+configure_eap()['ca_file_binary'], shell=True)
         exit(0)
-
-def configure_eap(data):
-    #Security of the SSID
-    user_cert_decode = ""
-    root = ""
-    if "EAPClientConfiguration" in data:
-        user_auth = profile_xml().parse_profile()['read_profile']["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
-        if user_auth == "":
-            user_auth = "certificate"
-        eap_type = profile_xml().parse_profile()['read_profile']["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
-        if eap_type == 25:
-            root = fromstring(models().WINDOWSpeap)
-            encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
-            sec_type = "WPA2"
-            encryption.text = "AES"
-            return {'root':root, 'eap_type':eap_type, 'sec_type':sec_type}
-        elif eap_type == 13:
-            root = fromstring(models().WINDOWStls)
-            payloads = [a for a in profile_xml().parse_profile()['read_profile']["PayloadContent"] if "PayloadType" in a]
-            for type in payloads:
-                if type["PayloadType"] == "com.apple.security.pkcs12":
-                    try:
-                        cert_p12 = path.join(local_computer().temp_path, user_auth+".p12")
-                        user_cert = type["PayloadContent"]
-                        user_cert_decode = b64decode(str(user_cert))
-                        tmp_cert = open(cert_p12, 'wb')
-                        tmp_cert.write(user_cert_decode)
-                        tmp_cert.close()
-                    except:
-                        msgbox("Your personal certificate file could not be generated, please contact your local support.","Error")
-                        exit(0)
-                elif type["PayloadType"] == "com.apple.security.root":
-                    try:
-                        ca_name = type["PayloadCertificateFileName"]
-                        ca_file_binary = path.join(local_computer().temp_path, ca_name+".cer")
-                        ca_cert = type["PayloadContent"]
-                        ca_cert_decode = b64decode(str(ca_cert))
-                        b64decode(str(ca_cert))
-                        tmp_ca = open(ca_file_binary, 'wb')
-                        tmp_ca.write(ca_cert_decode)
-                        tmp_ca.close()
-                    except:
-                        msgbox("The certificate of Authority file could not be generated, please contact your local support.","Error")
-                        exit(0)
-            encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
-            sec_type = "WPA2"
-            encryption.text = "AES"
-            return {'root':root, 'sec_type':sec_type, 'eap_type':eap_type, 'ca_file_binary':ca_file_binary, 'cert_p12':cert_p12, 'user_cert_decode':user_cert_decode}
-    else:
-        root = fromstring(models().WINDOWSopen)
-        wifi_key = profile_xml().parse_profile()['read_profile']["PayloadContent"][0]["Password"]
-        encryption = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
-        if profile_xml().parse_profile()['sec_type'] == "WEP":
-            sec_type = "open"
-            encryption.text = "WEP"
-        elif profile_xml().parse_profile()['sec_type'] == "WPA":
-            sec_type = "WPA2PSK"
-            encryption.text = "AES"
-        else:
-            sec_type = "open"
-            encryption.text = "none"
-        return {'sec_type':sec_type, 'root':root}
 
 class certificate:
     def	install_certificate(self):
@@ -393,7 +386,13 @@ class certificate:
         except:
             msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
             exit(0)	
-    
+
+P = Profile()
+C = Configure()
+M = Models()
+LC = LocalComputer()
+Cer = Certificate()
+   
 class MainPanel(wx.Panel):
 
     def ExecuteOperations(self, data):
