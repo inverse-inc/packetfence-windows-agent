@@ -1,5 +1,5 @@
 File used:
-parse.py, version.txt, imageBG.py, ic.ico
+parse.py, version.txt, imageBG.py, icon.ico
 
 Compiled with PyInstaller and Python 2.7.9 32bit.
 
@@ -10,7 +10,7 @@ First you need to convert the background image to a py file:
 [%PATH%]img2py -n bgimg pf_bg.png imageBG.py
 
 Then compile with pyinstaller:
-python [%PATH%]pyinstaller.py -F -n YourName --version-file=version.txt -i icone.ico --noconsole YourPythonProgram.py
+python [%PATH%]pyinstaller.py -F -n YourName --version-file=version.txt -i icon.ico --noconsole YourPythonProgram.py
 
 pyinstaller option used: 
 -F make it onefile

@@ -20,7 +20,7 @@ def parsing():
 				<hex></hex>
 				<name></name>
 			</SSID>
-			<nonBroadcast>false</nonBroadcast>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>auto</connectionMode>
@@ -63,7 +63,7 @@ def parsing():
 										<EnableQuarantineChecks>false</EnableQuarantineChecks>
 										<RequireCryptoBinding>false</RequireCryptoBinding>
 										<PeapExtensions>
-											<PerformServerValidation xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">true</PerformServerValidation>
+											<PerformServerValidation xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">false</PerformServerValidation>
 											<AcceptServerName xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">false</AcceptServerName>
 											<PeapExtensionsV2 xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2">
 												<AllowPromptingWhenServerCANotFound xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV3">true</AllowPromptingWhenServerCANotFound>
@@ -86,7 +86,7 @@ def parsing():
 				<hex></hex>
 				<name></name>
 			</SSID>
-			<nonBroadcast>false</nonBroadcast>
+			<nonBroadcast>true</nonBroadcast>
 		</SSIDConfig>
 		<connectionType>ESS</connectionType>
 		<connectionMode>auto</connectionMode>
@@ -190,6 +190,7 @@ def parsing():
 		read_profile = readPlistFromString(data)
 		ssid_name = read_profile["PayloadContent"][0]["SSID_STR"]
 		sec_type = read_profile["PayloadContent"][0]["EncryptionType"]
+		ssid_broadcast = read_profile["PayloadContent"][0]["HIDDEN_NETWORK"]
 		wifi_key = ""
 	except:
 		msgbox("The program cannot read the profile data, please contact your local support", "Error")
@@ -256,7 +257,13 @@ def parsing():
 	profile_ssid_name = profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}name")[0]
 	profile_ssid_name.text = ssid_name
 	ssid_hex = profile_ssid.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}hex")[0]
-	ssid_hex.text = ssid_name.encode("hex")  
+	ssid_hex.text = ssid_name.encode("hex")
+	is_ssid_broadcast = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}SSIDConfig/{http://www.microsoft.com/networking/WLAN/profile/v1}nonBroadcast")[0]
+	if ssid_broadcast == True:
+		ssid_broadcast = 'true'
+	elif ssid_broadcast == False:
+		ssid_broadcast = 'false'
+	is_ssid_broadcast.text = ssid_broadcast
 	sec_section = root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
 	sec_auth = sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
 	onex = sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
@@ -288,7 +295,7 @@ def parsing():
 	#Get the file to temp folder(right to write)
 	profile_file = path.join(temp_path, "template-out.xml")
 
-	profile_value = tostring(root) 
+	profile_value = tostring(root)
 	
 	#Add certificate to windows
 	if user_cert_decode != "":
@@ -315,12 +322,13 @@ def parsing():
 				exit(0)
 	
 	#add CA to the machine
-	try:
-		add_ca = " -addstore -user \"Root\" "
-		Popen(certutil+add_ca+ca_file_binary, shell=True)
-	except:
-		msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
-		exit(0)	
+	if eap_type == 13:
+		try:
+			add_ca = " -addstore -user \"Root\" "
+			Popen(certutil+add_ca+ca_file_binary, shell=True)
+		except:
+			msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
+			exit(0)	
 	
 	#Create new file with data 
 	with open(profile_file, "w") as configfile:

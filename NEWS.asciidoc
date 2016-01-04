@@ -21,3 +21,12 @@ Version 1.1
 ~~~~~~~~~~~
 
 Added EAP-TLS support, certificate instalation, errors handling.
+
+Version 1.2
+~~~~~~~~~~~
+
+Added case handle for the ssid visibility, take into account is the ssid is hidden or not, matching option "Connect even if this network is not broadcasting its name (SSID)" in Windows configuration.
+
+Rename icone to icon.
+
+Fixed a case where PEAP was not handle properly(trying to install CA).
