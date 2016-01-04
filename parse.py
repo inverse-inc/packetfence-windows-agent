@@ -386,14 +386,17 @@ class Certificate(object):
             msgbox("The Certificate of Authority could not be installed on your machine, please contact your local support.", "Error")
             exit(0)	
 
+################################
+
 P = Profile()
 C = Configure()
 M = Models()
 LC = LocalComputer()
 Cer = Certificate()
-   
-class MainPanel(wx.Panel):
 
+################################
+
+class MainPanel(wx.Panel):
     def ExecuteOperations(self, profile_value):
         P.download()
         P.read_profile(P.data)
@@ -434,8 +437,6 @@ class MainPanel(wx.Panel):
         bmp = img.ConvertToBitmap()
         dc.DrawBitmap(bmp, 0, 0)
  
- 
-
 class MainFrame(wx.Frame):
  
 	def __init__(self):
@@ -443,9 +444,8 @@ class MainFrame(wx.Frame):
 		panel = MainPanel(self)        
 		self.Center()
 
-
-		
 ########################################################################
+
 class Main(wx.App):
  
 	def __init__(self, redirect=False, filename=None):
