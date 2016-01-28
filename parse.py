@@ -34,7 +34,7 @@ class Models:
 				</authEncryption>
 				<OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
 					<cacheUserData>true</cacheUserData>
-					<authMode>user</authMode>
+					<authMode>machineOrUser</authMode>
 					<EAPConfig>
 						<EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
 							<EapMethod>
@@ -105,7 +105,7 @@ class Models:
 				<preAuthMode>disabled</preAuthMode>
 				<OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
 					<cacheUserData>true</cacheUserData>
-					<authMode>user</authMode> 
+					<authMode>machineOrUser</authMode> 
 					<EAPConfig>
 						<EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
 							<EapMethod><Type xmlns="http://www.microsoft.com/provisioning/EapCommon">13</Type>
@@ -205,12 +205,14 @@ class Profile(object):
             self.ssid_name = self.read_profile["PayloadContent"][0]["SSID_STR"]
             self.sec_type = self.read_profile["PayloadContent"][0]["EncryptionType"]
             self.ssid_broadcast = self.read_profile["PayloadContent"][0]["HIDDEN_NETWORK"]
-            if "EAPClientConfiguration" in P.data:
-                self.user_auth = self.read_profile["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
-                if self.user_auth == "":
-                    self.user_auth = "certificate"
+            if "EAPClientConfiguration" in P.data: 
                 self.eap_type = self.read_profile["PayloadContent"][0]["EAPClientConfiguration"]["AcceptEAPTypes"][0]
-
+                if self.eap_type == 25:
+                    self.user_auth = self.read_profile["PayloadContent"][0]["EAPClientConfiguration"]["UserName"]
+                    if self.user_auth == "":
+                        self.user_auth = "certificate"
+            else:
+                self.wifi_key = P.readp["PayloadContent"][0]["Password"]
         except:
             msgbox("The program cannot read the profile data, please contact your local support", "Error")
             exit(0)
@@ -244,6 +246,7 @@ class Configure(object):
                     except:
                         msgbox("Your personal certificate file could not be generated, please contact your local support.","Error")
                         exit(0)
+
                 elif type["PayloadType"] == "com.apple.security.root":
                     try:
                         self.ca_name = type["PayloadCertificateFileName"]
@@ -256,12 +259,12 @@ class Configure(object):
                     except:
                         msgbox("The certificate of Authority file could not be generated, please contact your local support.","Error")
                         exit(0)
+
             self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
             P.sec_type = "WPA2"
             self.encryption.text = "AES"
         else:
             C.root = fromstring(M.WINDOWSopen)
-            self.wifi_key = P.readp["PayloadContent"][0]["Password"]
             self.encryption = C.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security/{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}encryption")[0]
             if P.sec_type == "WEP":
                 P.sec_type = "open"
@@ -291,9 +294,10 @@ class Configure(object):
         self.is_ssid_broadcast.text = self.ssid_broadcast
         self.sec_section = self.root.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}MSM/{http://www.microsoft.com/networking/WLAN/profile/v1}security")[0]
         self.sec_auth = self.sec_section.findall("{http://www.microsoft.com/networking/WLAN/profile/v1}authEncryption/{http://www.microsoft.com/networking/WLAN/profile/v1}authentication")[0]
-        self.onex = self.sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
-        self.eap_config = self.onex.findall("{http://www.microsoft.com/networking/OneX/v1}EAPConfig")[0]
-        self.eap_host_config = self.eap_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapHostConfig")[0]
+        if P.eap_type:
+            self.onex = self.sec_section.findall("{http://www.microsoft.com/networking/OneX/v1}OneX")[0]
+            self.eap_config = self.onex.findall("{http://www.microsoft.com/networking/OneX/v1}EAPConfig")[0]
+            self.eap_host_config = self.eap_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}EapHostConfig")[0]
         if P.eap_type == 13:
             self.eap_type_key = self.eap_host_config.findall("{http://www.microsoft.com/provisioning/EapHostConfig}Config/{http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1}Eap/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}EapType")[0]
             self.ca_to_trust = self.eap_type_key.findall("{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}ServerValidation/{http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1}TrustedRootCA")[0]

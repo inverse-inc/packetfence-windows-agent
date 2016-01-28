@@ -34,4 +34,4 @@ Fixed a case where PEAP was not handle properly(trying to install CA).
 Version 1.3
 ~~~~~~~~~~~
 
-OOP rework. Changed logic.
+Rework to be OOP. Added machine or user auth instead of user auth only for PEAP/EAP-TLS.
