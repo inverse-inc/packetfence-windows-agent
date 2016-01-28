@@ -35,3 +35,5 @@ Version 1.3
 ~~~~~~~~~~~
 
 Rework to be OOP. Added machine or user auth instead of user auth only for PEAP/EAP-TLS.
+
+Fixed a case where a standard WPA/2-PSK was not configured properly.
