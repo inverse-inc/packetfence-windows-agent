@@ -22,7 +22,7 @@ const WIFI_PEAP_TEMPLATE = `<WLANProfile xmlns="http://www.microsoft.com/network
 			</authEncryption>
 			<OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
 			<cacheUserData>true</cacheUserData>
-				<authMode>user</authMode>
+				<authMode>machineOrUser</authMode>
 				<EAPConfig>
 					<EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
 						<EapMethod>
@@ -91,7 +91,7 @@ const WIFI_TLS_TEMPLATE = `<WLANProfile xmlns="http://www.microsoft.com/networki
       <preAuthMode>disabled</preAuthMode>
       <OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
         <cacheUserData>true</cacheUserData>
-        <authMode>user</authMode>
+        <authMode>machineOrUser</authMode>
         <EAPConfig>
           <EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
             <EapMethod><Type xmlns="http://www.microsoft.com/provisioning/EapCommon">13</Type>
@@ -159,7 +159,7 @@ const WIRED_TLS_TEMPLATE = `<LANProfile xmlns="http://www.microsoft.com/networki
 			<OneXEnabled>true</OneXEnabled>
 			<OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
 				<cacheUserData>true</cacheUserData>
-				<authMode>user</authMode>
+				<authMode>machineOrUser</authMode>
 				<EAPConfig>
 					<EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
 						<EapMethod>

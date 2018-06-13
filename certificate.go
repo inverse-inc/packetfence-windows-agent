@@ -2,14 +2,51 @@ package main
 
 import (
   "os"
+  "io"
   "log"
   "syscall"
+  "strings"
 
   "os/exec"
+  "encoding/hex"
+  "crypto/sha1"
 
   "github.com/lxn/walk"
   . "github.com/lxn/walk/declarative"
 )
+
+// Get CA fingerprint
+func getCAFingerprint(caFileBinary string) (string, error) {
+	var err error
+	var caFingerprint string
+	// open certificate of authority binary file
+	caFile, err := os.Open(caFileBinary)
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotOpenCAFile"), walk.MsgBoxOK)
+		log.Fatal("Failed opening CA file: ", err)
+		return "", err
+	}
+	// close file
+	defer caFile.Close()
+
+	// create new hash
+	hashSha1 := sha1.New()
+	// copy hash to the file
+	if _, err := io.Copy(hashSha1, caFile); err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCopyCAFile"), walk.MsgBoxOK)
+		log.Fatal("Failed copying CA file: ", err)
+		return "", err
+	}
+	// returns sha1 checksum of the data
+	caFingerprintBytes := hashSha1.Sum(nil)
+	// convert sha1 to hex (base16) to string
+	caFingerprint = strings.ToLower(hex.EncodeToString(caFingerprintBytes))
+	// add spaces every two characters
+	for i := 2; i < len(caFingerprint); i += 3 {
+		caFingerprint = caFingerprint[:i] + " " + caFingerprint[i:]
+	}
+	return caFingerprint, nil
+}
 
 // Add cert to windows
 func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error {
@@ -77,8 +114,7 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 									}
 								}
 							} else {
-								walk.MsgBox(windowMsgBox, T("successWindowTitle"), T("certificateInstallationSuccess"), walk.MsgBoxOK)
-								log.Println("Certificate successfully installed")
+								log.Println(T("successWindowTitle"), T("certificateInstallationSuccess"))
 								os.Remove(userCertDecode)
 							}
 							mw.Close()
@@ -122,8 +158,7 @@ func addCAToMachine(eapType uint64, caFileBinary string, CERTUTIL_PROGRAM_PATH s
 			}
 		}
 	} else {
-		log.Println("CA successfully installed")
-		walk.MsgBox(windowMsgBox, T("successWindowTitle"), T("caInstallationSuccess"), walk.MsgBoxOK)
+		log.Println(T("successWindowTitle"), T("caInstallationSuccess"))
 	}
 	return err
 }

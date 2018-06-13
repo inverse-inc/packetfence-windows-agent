@@ -146,7 +146,7 @@ func Configure() {
 	}
 
 	// Read xml profile, convert to string
-	data, err := ioutil.ReadFile("C:/Users/Zoelie Charpentier/Downloads/profile.xml")
+	data, err := ioutil.ReadFile("profile.xml")
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotReadProfileData"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
@@ -480,7 +480,7 @@ func createProfileFile(templateToFile string) error {
 		return err
 	}
 	os.Remove("profile.xml")
-	walk.MsgBox(windowMsgBox, "Information", T("profileCreationSuccess"), walk.MsgBoxOK)
+	log.Println("Information:", T("profileCreationSuccess"))
 	return nil
 }
 
@@ -494,7 +494,7 @@ func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, Succes
 		log.Fatal("Failed adding profile: ", err, output)
 		return err
 	} else {
-		walk.MsgBox(windowMsgBox, "Information", SuccessMessage, walk.MsgBoxOK)
+		walk.MsgBox(windowMsgBox, "Information:", SuccessMessage, walk.MsgBoxOK)
 		os.Remove(profileFile)
 	}
 	return nil
