@@ -145,7 +145,6 @@ func addCAToMachine(eapType uint64, caFileBinary string, CERTUTIL_PROGRAM_PATH s
 					if status.ExitStatus() == int(ERROR_CANCELED) {
 						// reprompt user to add certificate to windows
 						retryOrCancel := walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("caErrorCanceled"), walk.MsgBoxRetryCancel)
-						log.Println(retryOrCancel) // Retry = 4, Cancel = 2
 						if retryOrCancel == 4 {
 							log.Print("Failed installing certificate: ", err)
 							os.Remove(caFileBinary)
