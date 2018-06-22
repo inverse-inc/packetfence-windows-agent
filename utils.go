@@ -38,14 +38,14 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 
 // Converts base 64 background image to pf_bg.png
 func base64ToPng(BACKGROUND_IMAGE_PF, tempPath string) (error, string) {
-  reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(BACKGROUND_IMAGE_PF))
+	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(BACKGROUND_IMAGE_PF))
 	decodeBase64ToPng, _, err := image.Decode(reader)
 	if err != nil {
 		log.Fatal("Unable to decode base 64 background image: ", err)
 	}
 	//Encode from image format to writer
 	pngFilename := "pf_bg.png"
-  pngFilePath := tempPath + "\\" + pngFilename
+	pngFilePath := tempPath + "\\" + pngFilename
 	backgroundFile, err := os.Create(pngFilePath)
 	if err != nil {
 		log.Fatal("Unable to open or create background image: ", err)

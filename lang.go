@@ -95,7 +95,7 @@ const ENGLISH_TRANSLATION = `[
   },
   {
     "id": "caErrorCanceled",
-    "translation": "The Certificate of Authority could not be installed on your machine.\nPlease select 'Yes' if prompted to install the Certificate of Authority."
+    "translation": "The Certificate of Authority could not be installed on your machine.\nIf you chose not to install the Certificate of Authority, the program will terminate."
   },
   {
     "id": "cannotInstallCA",
@@ -242,7 +242,7 @@ const FRENCH_TRANSLATION = `[
   },
   {
     "id": "caErrorCanceled",
-    "translation": "L'Autorité de Certification n'a pas pu être installée sur votre machine.\nVeuillez sélectionner «Oui» si vous êtes invité à installer l'Autorité de Certification'."
+    "translation": "L'Autorité de Certification n'a pas pu être installée sur votre machine.\nSi vous choisissez de ne pas l'installer, le programme se terminera."
   },
   {
     "id": "cannotInstallCA",

@@ -132,22 +132,30 @@ func addCAToMachine(eapType uint64, caFileBinary string, CERTUTIL_PROGRAM_PATH s
 	var err error
 	var ERROR_CANCELED int64
 	ERROR_CANCELED = 2147943623
-	sum := 0
-	addCA := exec.Command(CERTUTIL_PROGRAM_PATH, "-addstore", "-user", "Root", caFileBinary)
-	// use Start() and Wait() to specify exit status 1 error
-	addCA.Start()
-	// error handling
-	if err := addCA.Wait(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			for i := 0; i < 2; i++ {
+	runCommand := true
+	for runCommand {
+		runCommand = false
+		addCA := exec.Command(CERTUTIL_PROGRAM_PATH, "-addstore", "-user", "Root", caFileBinary)
+		// use Start() and Wait() instead of Run() to specify exit status 1 error
+		addCA.Start()
+		// error handling
+		if err := addCA.Wait(); err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
 				if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 					if status.ExitStatus() == int(ERROR_CANCELED) {
 						// reprompt user to add certificate to windows
-						walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("caErrorCanceled"), walk.MsgBoxOK)
-						os.Remove(caFileBinary)
-						os.Remove("profile.xml")
-						log.Fatal("Failed installing certificate: ", err)
-						sum += i
+						retryOrCancel := walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("caErrorCanceled"), walk.MsgBoxRetryCancel)
+						log.Println(retryOrCancel) // Retry = 4, Cancel = 2
+						if retryOrCancel == 4 {
+							log.Print("Failed installing certificate: ", err)
+							os.Remove(caFileBinary)
+							os.Remove("profile.xml")
+							runCommand = true
+						} else {
+							log.Fatal("Failed installing certificate: ", err)
+							os.Remove(caFileBinary)
+							os.Remove("profile.xml")
+						}
 					} else {
 						walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotInstallCA"), walk.MsgBoxOK)
 						os.Remove(caFileBinary)
@@ -156,9 +164,9 @@ func addCAToMachine(eapType uint64, caFileBinary string, CERTUTIL_PROGRAM_PATH s
 					}
 				}
 			}
+		} else {
+			log.Println(T("successWindowTitle"), T("caInstallationSuccess"))
 		}
-	} else {
-		log.Println(T("successWindowTitle"), T("caInstallationSuccess"))
 	}
 	return err
 }
