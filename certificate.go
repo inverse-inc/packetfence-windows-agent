@@ -128,7 +128,7 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 }
 
 // Add CA to the machine
-func addCAToMachine(eapType uint64, caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
+func addCAToMachine(caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
 	var err error
 	var ERROR_CANCELED int64
 	ERROR_CANCELED = 2147943623

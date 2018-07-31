@@ -182,10 +182,19 @@ func Configure() {
 			shouldConfigureWifi = true
 			// get dict index
 			wifiIndex = i
+			// Get the EAP type to avoid importing the RADIUS cert as a CA
+			eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
+			if ok {
+				eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
+			}
 		// Wired configuration
 		case "com.apple.firstactiveethernet.managed":
 			shouldConfigureWired = true
 			wiredIndex = i
+			eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
+			if ok {
+				eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
+			}
 		// User certificate configuration
 		case "com.apple.security.pkcs12":
 			userCert := payloadContent["PayloadContent"].(string)
@@ -200,15 +209,17 @@ func Configure() {
 			}
 		// Certificate of Authority configuration
 		case "com.apple.security.root":
-			caName := payloadContent["PayloadCertificateFileName"].(string)
-			caCert := payloadContent["PayloadContent"].(string)
-			fileExtension := ".cer"
-			alertMessage := T("cannotGenerateCAFile")
-			caFileBinary, err = createCertTempFile(tempPath, caCert, caName, fileExtension, alertMessage)
-			err = addCAToMachine(eapType, caFileBinary, CERTUTIL_PROGRAM_PATH)
-			if err != nil {
-				log.Fatal("Failed creating profile: ", err)
-				os.Exit(1)
+			if eapType == EAPTYPE_TLS {
+				caName := payloadContent["PayloadCertificateFileName"].(string)
+				caCert := payloadContent["PayloadContent"].(string)
+				fileExtension := ".cer"
+				alertMessage := T("cannotGenerateCAFile")
+				caFileBinary, err = createCertTempFile(tempPath, caCert, caName, fileExtension, alertMessage)
+				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
+				if err != nil {
+					log.Fatal("Failed creating profile: ", err)
+					os.Exit(1)
+				}
 			}
 		default:
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("Unexpected PayloadType {{.PayloadType}} please contact your local support.", map[string]interface{}{
