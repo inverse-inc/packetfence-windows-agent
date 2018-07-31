@@ -6,7 +6,7 @@
 	<assemblyIdentity
 		version="1.0.0.0"
 		processorArchitecture="*"
-		name="packetfence.exe"
+		name="packetfence-windows-agent.exe"
 		type="win32"
 	/>
 	<dependency>

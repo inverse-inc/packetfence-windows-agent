@@ -25,7 +25,7 @@ parse.go, rsrc.syso
 
 ===========
 
-#### Create Manifest `pf.manifest`
+#### Create the manifest `packetfence-windows-agent.manifest`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -36,7 +36,7 @@ parse.go, rsrc.syso
 	<assemblyIdentity
 		version="1.0.0.0"
 		processorArchitecture="*"
-		name="packetfence.exe"
+		name="packetfence-windows-agent.exe"
 		type="win32"
 	/>
 	<dependency>
