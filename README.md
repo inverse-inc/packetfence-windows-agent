@@ -25,7 +25,7 @@ parse.go, rsrc.syso
 
 ===========
 
-#### Create the manifest `packetfence-windows-agent.manifest`
+#### Create the manifest `packetfence-windows-agent.exe.manifest`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -71,10 +71,8 @@ Then compile the manifest using the [rsrc tool] (https://github.com/akavel/rsrc)
 
   ```
   go get github.com/akavel/rsrc  
-  rsrc -manifest pf.manifest -o rsrc.syso
+  rsrc -manifest packetfence-windows-agent.exe.manifest -o rsrc.syso
   ```
-
-Or rename the `pf.manifest` file to `pf.exe.manifest` and distribute it with the application instead.
 
 ##### Build app
 
