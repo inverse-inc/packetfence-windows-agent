@@ -82,7 +82,7 @@ In the directory containing `parse.go`, run :
 
 To get rid of the cmd window, run :
 
-	go build -ldflags="-H windowsgui"
+	go build -ldflags "-H windowsgui" github.com/inverse-inc/packetfence-windows-agent
 
 ##### Run app
 
