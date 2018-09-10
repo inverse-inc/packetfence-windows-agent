@@ -84,6 +84,14 @@ To get rid of the cmd window, run :
 
 	go build -ldflags "-H windowsgui" github.com/inverse-inc/packetfence-windows-agent
 
+##### Cross compiling for 32-bit
+
+First, set the following environment variable
+
+	GOARCH=386
+	
+Then, compile the application like you would normally do.
+
 ##### Run app
 
 To run the application, type :
