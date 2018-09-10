@@ -96,4 +96,4 @@ Then, compile the application like you would normally do.
 
 To run the application, type :
 
-	pf.exe
+	packetfence-windows-agent.exe
