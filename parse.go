@@ -29,7 +29,7 @@ const CERTUTIL_PROGRAM_PATH = "C:\\Windows\\System32\\certutil.exe"
 const WIFI_PEAP_TEMPLATE_NAME = "wireless PEAP template"
 const WIFI_TLS_TEMPLATE_NAME = "wireless TLS template"
 const WIFI_OPEN_TEMPLATE_NAME = "wireless Open template"
-const PROFILE_URL = "http://packetfence.org/profile.xml"
+const PROFILE_URL = "http://profile.packetfence.org/profile.xml"
 const EAPTYPE_PEAP = 25
 const EAPTYPE_TLS = 13
 
