@@ -15,8 +15,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
-	"text/template"
 	"path/filepath"
+	"text/template"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
@@ -117,7 +117,7 @@ func main() {
 		log.Fatal("Failed opening main window: ", err)
 		os.Exit(1)
 	}
-	os.Remove(tempPath +"\\"+ "pf_bg.png")
+	os.Remove(tempPath + "\\" + "pf_bg.png")
 	os.Exit(0)
 }
 
@@ -228,7 +228,7 @@ func Configure() {
 		default:
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("Unexpected PayloadType {{.PayloadType}} please contact your local support.", map[string]interface{}{
 				"PayloadType": payloadType,
-				}), walk.MsgBoxOK)
+			}), walk.MsgBoxOK)
 			log.Fatal("Unexpected PayloadType: ", payloadType)
 			os.Exit(1)
 		}

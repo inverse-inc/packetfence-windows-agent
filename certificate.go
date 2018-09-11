@@ -1,18 +1,18 @@
 package main
 
 import (
-  "os"
-  "io"
-  "log"
-  "syscall"
-  "strings"
+	"io"
+	"log"
+	"os"
+	"strings"
+	"syscall"
 
-  "os/exec"
-  "encoding/hex"
-  "crypto/sha1"
+	"crypto/sha1"
+	"encoding/hex"
+	"os/exec"
 
-  "github.com/lxn/walk"
-  . "github.com/lxn/walk/declarative"
+	"github.com/lxn/walk"
+	. "github.com/lxn/walk/declarative"
 )
 
 // Get CA fingerprint
@@ -60,7 +60,7 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 	ERROR_FILE_NOT_FOUND = 2147942402
 
 	if userCertDecode != "" {
-		var	badCertificatePassword = true
+		var badCertificatePassword = true
 		for badCertificatePassword {
 			badCertificatePassword = false
 
@@ -73,7 +73,7 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 				MinSize:  Size{350, 100},
 				Layout:   VBox{},
 				Children: []Widget{
-          Label{Text: T("enterCertificatePassword")},
+					Label{Text: T("enterCertificatePassword")},
 					LineEdit{AssignTo: &passwordTE, PasswordMode: true},
 					PushButton{
 						Text: "OK",

@@ -1,17 +1,17 @@
 package main
 
 import (
-  "strings"
-  "os"
-  "log"
-  "io"
-  "image"
+	"image"
+	"io"
+	"log"
+	"os"
+	"strings"
 
-  "image/png"
-  "encoding/base64"
+	"encoding/base64"
+	"image/png"
 
-  "github.com/tink-ab/tempfile"
-  "github.com/lxn/walk"
+	"github.com/lxn/walk"
+	"github.com/tink-ab/tempfile"
 )
 
 // Create and write profile file into templateToFile folder
@@ -54,12 +54,12 @@ func base64ToPng(BACKGROUND_IMAGE_PF, tempPath string) (error, string) {
 	err = png.Encode(backgroundFile, decodeBase64ToPng)
 	if err != nil {
 		log.Fatal(err)
-    os.Remove(pngFilePath)
+		os.Remove(pngFilePath)
 		return err, pngFilename
 	}
 	log.Println("PNG file", pngFilename, "successfully created.")
-  backgroundFile.Close()
-  return nil, pngFilename
+	backgroundFile.Close()
+	return nil, pngFilename
 }
 
 // Decode base64 certificate to string
