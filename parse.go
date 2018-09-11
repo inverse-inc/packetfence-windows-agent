@@ -25,6 +25,8 @@ import (
 	"howett.net/plist"
 )
 
+const PROGRAM_NAME = "PacketFence Provisioning Agent"
+
 const CERTUTIL_PROGRAM_PATH = "C:\\Windows\\System32\\certutil.exe"
 const WIFI_PEAP_TEMPLATE_NAME = "wireless PEAP template"
 const WIFI_TLS_TEMPLATE_NAME = "wireless TLS template"
@@ -58,6 +60,8 @@ type Template struct {
 type Handle uintptr
 
 func main() {
+	hideConsole()
+
 	log.Println("==================== PacketFence Provisioning Agent ===================")
 
 	currentWorkingDirectory, err := os.Executable()
@@ -89,7 +93,7 @@ func main() {
 	var mw1 *walk.MainWindow
 	if _, err := (MainWindow{
 		AssignTo:   &mw1,
-		Title:      "PacketFence Provisioning Agent",
+		Title:      PROGRAM_NAME,
 		MinSize:    Size{400, 400},
 		Layout:     VBox{},
 		Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},

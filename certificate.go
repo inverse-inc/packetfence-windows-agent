@@ -69,10 +69,11 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 
 			MainWindow{
 				AssignTo: &mw,
-				Title:    T("enterCertificatePassword"),
+				Title:    PROGRAM_NAME,
 				MinSize:  Size{350, 100},
 				Layout:   VBox{},
 				Children: []Widget{
+          Label{Text: T("enterCertificatePassword")},
 					LineEdit{AssignTo: &passwordTE, PasswordMode: true},
 					PushButton{
 						Text: "OK",
