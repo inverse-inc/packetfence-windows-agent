@@ -80,9 +80,7 @@ In the directory containing `parse.go`, run :
 
 	go build
 
-To get rid of the cmd window, run :
-
-	go build -ldflags "-H windowsgui" github.com/inverse-inc/packetfence-windows-agent
+NOTE: To have the cmd window, you need to comment the `hideConsole()` line in parse.go, and then build normally
 
 ##### Cross compiling for 32-bit
 
