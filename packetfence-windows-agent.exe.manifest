@@ -4,7 +4,7 @@
 	manifestVersion="1.0"
 	xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
 	<assemblyIdentity
-		version="1.0.0.0"
+		version="1.0.1.0"
 		processorArchitecture="*"
 		name="packetfence-windows-agent.exe"
 		type="win32"
