@@ -9,7 +9,7 @@ Follow the following instructions to get your PacketFence agent running.
 
 ### Set up
 
-Compiled with Go Programming Language amd64 version 1.10.1
+Compiled with Go Programming Language amd64 version 1.17
 To set up your Go environment, see [Getting Started](http://golang.org/doc/install.html).
 
 Then set up your environment variables :
@@ -70,7 +70,7 @@ parse.go, rsrc.syso
 Then compile the manifest using the [rsrc tool] (https://github.com/akavel/rsrc) :
 
   ```
-  go get github.com/akavel/rsrc  
+  go install github.com/akavel/rsrc@latest
   rsrc -manifest packetfence-windows-agent.exe.manifest -o rsrc.syso
   ```
 

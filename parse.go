@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -26,6 +27,7 @@ import (
 )
 
 const PROGRAM_NAME = "PacketFence Provisioning Agent"
+const VERSION = "1.0.1"
 
 const CERTUTIL_PROGRAM_PATH = "C:\\Windows\\System32\\certutil.exe"
 const WIFI_PEAP_TEMPLATE_NAME = "wireless PEAP template"
@@ -93,7 +95,7 @@ func main() {
 	var mw1 *walk.MainWindow
 	if _, err := (MainWindow{
 		AssignTo:   &mw1,
-		Title:      PROGRAM_NAME,
+		Title:      fmt.Sprintf("%s - %s", PROGRAM_NAME, VERSION),
 		MinSize:    Size{400, 400},
 		Layout:     VBox{},
 		Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},

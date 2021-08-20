@@ -36,7 +36,7 @@ const WIFI_PEAP_TEMPLATE = `<WLANProfile xmlns="http://www.microsoft.com/network
 								<Type>25</Type>
 								<EapType xmlns="http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV1">
 									<ServerValidation>
-										<DisableUserPromptForServerValidation>true</DisableUserPromptForServerValidation>
+										<DisableUserPromptForServerValidation>false</DisableUserPromptForServerValidation>
 										<ServerNames></ServerNames>
 									</ServerValidation>
 									<FastReconnect>true</FastReconnect>
@@ -109,7 +109,7 @@ const WIFI_TLS_TEMPLATE = `<WLANProfile xmlns="http://www.microsoft.com/networki
                     </CertificateStore>
                   </CredentialsSource>
                   <ServerValidation>
-                    <DisableUserPromptForServerValidation>true</DisableUserPromptForServerValidation>
+                    <DisableUserPromptForServerValidation>false</DisableUserPromptForServerValidation>
 			<TrustedRootCA>{{.CaToTrust}}</TrustedRootCA>
                   </ServerValidation>
                   <DifferentUsername>false</DifferentUsername>
