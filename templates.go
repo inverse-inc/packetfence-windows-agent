@@ -109,7 +109,7 @@ const WIFI_TLS_TEMPLATE = `<WLANProfile xmlns="http://www.microsoft.com/networki
                     </CertificateStore>
                   </CredentialsSource>
                   <ServerValidation>
-                    <DisableUserPromptForServerValidation>true</DisableUserPromptForServerValidation>
+                    <DisableUserPromptForServerValidation>false</DisableUserPromptForServerValidation>
 			<TrustedRootCA>{{.CaToTrust}}</TrustedRootCA>
                   </ServerValidation>
                   <DifferentUsername>false</DifferentUsername>
