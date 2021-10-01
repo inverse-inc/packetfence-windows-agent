@@ -23,7 +23,7 @@ func getCAFingerprint(caFileBinary string) (string, error) {
 	caFile, err := os.Open(caFileBinary)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotOpenCAFile"), walk.MsgBoxOK)
-		log.Fatal("Failed opening CA file: ", err)
+		log.Print("Failed opening CA file: ", err)
 		return "", err
 	}
 	// close file
@@ -34,7 +34,7 @@ func getCAFingerprint(caFileBinary string) (string, error) {
 	// copy hash to the file
 	if _, err := io.Copy(hashSha1, caFile); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCopyCAFile"), walk.MsgBoxOK)
-		log.Fatal("Failed copying CA file: ", err)
+		log.Print("Failed copying CA file: ", err)
 		return "", err
 	}
 	// returns sha1 checksum of the data
@@ -100,17 +100,17 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 											walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidCertificate"), walk.MsgBoxOK)
 											os.Remove(userCertDecode)
 											os.Remove("profile.xml")
-											log.Fatal("Invalid certificate: ", exitStatus)
+											log.Print("Invalid certificate: ", exitStatus)
 										case int(ERROR_FILE_NOT_FOUND):
 											walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotFindCertificateFile"), walk.MsgBoxOK)
 											os.Remove(userCertDecode)
 											os.Remove("profile.xml")
-											log.Fatal("Certificate not found: ", exitStatus)
+											log.Print("Certificate not found: ", exitStatus)
 										default:
 											walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotInstallCertificate"), walk.MsgBoxOK)
 											os.Remove(userCertDecode)
 											os.Remove("profile.xml")
-											log.Fatal("Cannot install certificate: ", exitStatus)
+											log.Print("Cannot install certificate: ", exitStatus)
 										}
 									}
 								}
@@ -148,19 +148,13 @@ func addCAToMachine(caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
 						retryOrCancel := walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("caErrorCanceled"), walk.MsgBoxRetryCancel)
 						if retryOrCancel == 4 {
 							log.Print("Failed installing certificate: ", err)
-							os.Remove(caFileBinary)
-							os.Remove("profile.xml")
 							runCommand = true
 						} else {
-							log.Fatal("Failed installing certificate: ", err)
-							os.Remove(caFileBinary)
-							os.Remove("profile.xml")
+							log.Print("Failed installing certificate: ", err)
 						}
 					} else {
 						walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotInstallCA"), walk.MsgBoxOK)
-						os.Remove(caFileBinary)
-						os.Remove("profile.xml")
-						log.Fatal("Failed installing certificate: ", err)
+						log.Print("Failed installing certificate: ", err)
 					}
 				}
 			}
