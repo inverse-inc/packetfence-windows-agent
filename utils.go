@@ -18,21 +18,23 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 	// create and open file
 	languageFile, err := os.Create(currentDir + "\\" + languageFileName)
 	if err != nil {
-		walk.MsgBox(windowMsgBox, "Error", "Unable to create the language file, please contact your local support.", walk.MsgBoxOK)
-		log.Print("Failed creating language file: ", err)
+		addNewLinesToDebug("Unable to create the language file:" + err.Error())
+		viewErrorAndExit("Unable to create the language file.")
 		return err
+	} else {
+		// close file
+		defer languageFile.Close()
+		// write the template into the new file
+		_, err = io.Copy(languageFile, strings.NewReader(translationLanguage))
+		if err != nil {
+			addNewLinesToDebug("Unable to write into language file:" + err.Error())
+			viewErrorAndExit("Unable to write into language file.")
+			return err
+		} else {
+			addNewLinesToDebug("Language file successfully created.")
+			return nil
+		}
 	}
-	// close file
-	defer languageFile.Close()
-	// write the template into the new file
-	_, err = io.Copy(languageFile, strings.NewReader(translationLanguage))
-	if err != nil {
-		walk.MsgBox(windowMsgBox, "Error", "Unable to write into language file, please contact your local support.", walk.MsgBoxOK)
-		log.Print("Failed writing language constant to file: ", err)
-		return err
-	}
-	log.Print("Language file successfully created.")
-	return nil
 }
 
 func addNewLinesToDebug(mytxt string) {
@@ -125,6 +127,7 @@ func cleanTmpFiles() {
 	os.Remove(tempPath + "\\" + "template-out.xml")
 	os.Remove(profilePath)
 	os.Remove(cafilePath)
+	os.Remove(userCertPath)
 }
 
 // Prepare Background image
