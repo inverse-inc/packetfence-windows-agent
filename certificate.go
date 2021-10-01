@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"log"
 	"os"
 	"strings"
 	"syscall"
@@ -22,30 +21,33 @@ func getCAFingerprint(caFileBinary string) (string, error) {
 	// open certificate of authority binary file
 	caFile, err := os.Open(caFileBinary)
 	if err != nil {
-		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotOpenCAFile"), walk.MsgBoxOK)
-		log.Print("Failed opening CA file: ", err)
+		addNewLinesToDebug(T("cannotOpenCAFile") + err.Error())
+		viewErrorAndExit(T("cannotOpenCAFile"))
+		defer caFile.Close()
 		return "", err
-	}
-	// close file
-	defer caFile.Close()
+	} else {
+		// close file
+		defer caFile.Close()
 
-	// create new hash
-	hashSha1 := sha1.New()
-	// copy hash to the file
-	if _, err := io.Copy(hashSha1, caFile); err != nil {
-		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCopyCAFile"), walk.MsgBoxOK)
-		log.Print("Failed copying CA file: ", err)
-		return "", err
+		// create new hash
+		hashSha1 := sha1.New()
+		// copy hash to the file
+		if _, err := io.Copy(hashSha1, caFile); err != nil {
+			addNewLinesToDebug(T("cannotCopyCAFile") + err.Error())
+			viewErrorAndExit(T("cannotCopyCAFile"))
+			return "", err
+		} else {
+			// returns sha1 checksum of the data
+			caFingerprintBytes := hashSha1.Sum(nil)
+			// convert sha1 to hex (base16) to string
+			caFingerprint = strings.ToLower(hex.EncodeToString(caFingerprintBytes))
+			// add spaces every two characters
+			for i := 2; i < len(caFingerprint); i += 3 {
+				caFingerprint = caFingerprint[:i] + " " + caFingerprint[i:]
+			}
+			return caFingerprint, nil
+		}
 	}
-	// returns sha1 checksum of the data
-	caFingerprintBytes := hashSha1.Sum(nil)
-	// convert sha1 to hex (base16) to string
-	caFingerprint = strings.ToLower(hex.EncodeToString(caFingerprintBytes))
-	// add spaces every two characters
-	for i := 2; i < len(caFingerprint); i += 3 {
-		caFingerprint = caFingerprint[:i] + " " + caFingerprint[i:]
-	}
-	return caFingerprint, nil
 }
 
 // Add cert to windows
@@ -90,33 +92,27 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 								if exitErr, ok := err.(*exec.ExitError); ok {
 									if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 										exitStatus := status.ExitStatus()
-										log.Print("Exit Status: ", exitStatus)
+										addNewLinesToDebug("Exit Status: " + string(exitStatus))
 										switch exitStatus {
 										case int(ERROR_INVALID_PASSWORD):
-											walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("wrongPassword"), walk.MsgBoxOK)
+											addNewLinesToDebug(T("wrongPassword"))
+											viewErrorAndExit(T("wrongPassword"))
 											badCertificatePassword = true
 											mw.Close()
 										case int(ERROR_INVALID_DATA):
-											walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidCertificate"), walk.MsgBoxOK)
-											os.Remove(userCertDecode)
-											os.Remove("profile.xml")
-											log.Print("Invalid certificate: ", exitStatus)
+											addNewLinesToDebug(T("invalidCertificate"))
+											viewErrorAndExit(T("invalidCertificate"))
 										case int(ERROR_FILE_NOT_FOUND):
-											walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotFindCertificateFile"), walk.MsgBoxOK)
-											os.Remove(userCertDecode)
-											os.Remove("profile.xml")
-											log.Print("Certificate not found: ", exitStatus)
+											addNewLinesToDebug(T("cannotFindCertificateFile") + string(exitStatus))
+											viewErrorAndExit(T("cannotFindCertificateFile"))
 										default:
-											walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotInstallCertificate"), walk.MsgBoxOK)
-											os.Remove(userCertDecode)
-											os.Remove("profile.xml")
-											log.Print("Cannot install certificate: ", exitStatus)
+											addNewLinesToDebug(T("cannotInstallCertificate") + string(exitStatus))
+											viewErrorAndExit(T("cannotInstallCertificate"))
 										}
 									}
 								}
 							} else {
-								log.Println(T("successWindowTitle"), T("certificateInstallationSuccess"))
-								os.Remove(userCertDecode)
+								addNewLinesToDebug(T("certificateInstallationSuccess"))
 							}
 							mw.Close()
 						},
@@ -147,19 +143,19 @@ func addCAToMachine(caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
 						// reprompt user to add certificate to windows
 						retryOrCancel := walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("caErrorCanceled"), walk.MsgBoxRetryCancel)
 						if retryOrCancel == 4 {
-							log.Print("Failed installing certificate: ", err)
+							addNewLinesToDebug("Failed installing certificate: " + err.Error())
 							runCommand = true
 						} else {
-							log.Print("Failed installing certificate: ", err)
+							addNewLinesToDebug("Failed installing certificate: " + err.Error())
 						}
 					} else {
-						walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotInstallCA"), walk.MsgBoxOK)
-						log.Print("Failed installing certificate: ", err)
+						addNewLinesToDebug(T("cannotInstallCA") + err.Error())
+						viewErrorAndExit(T("cannotInstallCA"))
 					}
 				}
 			}
 		} else {
-			log.Println(T("successWindowTitle"), T("caInstallationSuccess"))
+			addNewLinesToDebug(T("caInstallationSuccess") + err.Error())
 		}
 	}
 	return err
