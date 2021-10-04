@@ -89,6 +89,7 @@ func viewDebug() {
 		mw1.SetBackground(scb)
 		debugGrpBox.SetVisible(false)
 		imgView.SetVisible(true)
+		viewClosedButton(false)
 		configButton.SetText("Configure")
 	} else {
 		debug = true
