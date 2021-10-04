@@ -132,7 +132,7 @@ func main() {
 			PushButton{
 				AssignTo:   &closedButton,
 				Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
-				MinSize:    Size{Width: 10, Height: 51},
+				MinSize:    Size{Width: 10, Height: 10},
 				Text:       "Close",
 				Visible:    false,
 				OnClicked: func() {
