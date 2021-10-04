@@ -11,10 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"crypto/tls"
 	"encoding/hex"
 	"io/ioutil"
-	"net/http"
 	"os/exec"
 	"path/filepath"
 	"text/template"
@@ -74,6 +72,7 @@ var pngFileName string
 var pngFilePath string
 var userCertPath string
 var profilePath string
+var templateOutPath string
 var stableCurrentWorkingDirectory string
 
 func main() {
@@ -137,8 +136,7 @@ func main() {
 				Text:       "Close",
 				Visible:    false,
 				OnClicked: func() {
-					cleanAndExit()
-					mw1.Close()
+					cleanAndExit(0)
 				},
 			},
 		},
@@ -195,7 +193,8 @@ func prepareEnv() {
 	pngFileName = "pf_bg.png"
 	pngFilePath = tempPath + "\\" + pngFileName
 	userCertPath = ""
-	profilePath = tempPath + "\\template-out.xml"
+	profilePath = tempPath + "\\profile.xml"
+	templateOutPath = tempPath + "\\template-out.xml"
 	debug = false
 }
 
@@ -203,12 +202,12 @@ func fetchPortalDomainName() {
 	var xmlPlistProfile map[string]interface{}
 
 	// Download mobileconfig file
-	err := writeProfileToLocalFile("profile.xml", PROFILE_URL)
+	err := writeURLToLocalFile(profilePath, PROFILE_URL)
 	if err != nil {
 		viewErrorAndExit(T("cannotRetrieveProfileFile"), err.Error())
 	} else {
 		// Read xml profile, convert to string
-		data, err := ioutil.ReadFile("profile.xml")
+		data, err := ioutil.ReadFile(profilePath)
 		if err != nil {
 			viewErrorAndExit(T("cannotReadProfileData"), err.Error())
 		} else {
@@ -319,7 +318,6 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 	var templateToFile string
 	var elementsToReplaceInTemplate Template
 	var wifiKey string
-	var err error
 	// Get SSID information
 	payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wifiIndex].(map[string]interface{})
 	ssidString := payloadContent["SSID_STR"].(string)
@@ -329,19 +327,6 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 	if securityType == "None" {
 		securityType = "open"
 	}
-
-	wlanCmd := exec.Command("netsh", "wlan", "add", "profile", "filename="+profilePath, "user=all")
-	wlanCmdOutput := &bytes.Buffer{}
-	wlanCmd.Stdout = wlanCmdOutput
-	wlanCmdErr := wlanCmd.Run()
-	if wlanCmdErr != nil {
-		// There is an issue with the command line
-		addNewLinesToDebug(T("==> Executing: %s\n", strings.Join(wlanCmd.Args, " ")))
-		addNewLinesToDebug(T("==> Error: %s\n", wlanCmdErr.Error()))
-		addNewLinesToDebug(T("==> Ouput: %s\n", wlanCmdOutput.String()))
-	}
-
-	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile " + ssidString + " in the WiFi networks.")
 
 	// Security of the SSID
 	eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
@@ -364,17 +349,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 				Encryption:      "AES",
 			}
 			// executes the template
-			templateToFile, err := executeTemplate(WIFI_PEAP_TEMPLATE_NAME, WIFI_PEAP_TEMPLATE, elementsToReplaceInTemplate)
-			if err != nil {
-				viewErrorAndExit(T("Unexpected Error when executing the template."), err.Error())
-			}
-			// creates profile file with the executed template
-			err = createProfileFile(templateToFile)
-			if err != nil {
-				viewErrorAndExit(T("Unexpected Error when creating profile file."), err.Error())
-			}
-			// adds the new profile to Windows with netsh command
-			addProfileToMachine(profilePath, wlanCmd, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+			templateToFile = executeTemplate(WIFI_PEAP_TEMPLATE_NAME, WIFI_PEAP_TEMPLATE, elementsToReplaceInTemplate)
 		} else if eapType == EAPTYPE_TLS {
 			caFingerprint, err := getCAFingerprint(caFileBinary)
 			if err != nil {
@@ -388,15 +363,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 				Encryption:      "AES",
 				CaToTrust:       caFingerprint,
 			}
-			templateToFile, err = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
-			if err != nil {
-				viewErrorAndExit(T("Failed executing template."), err.Error())
-			}
-			err = createProfileFile(templateToFile)
-			if err != nil {
-				viewErrorAndExit(T("Failed creating profile file."), err.Error())
-			}
-			addProfileToMachine(profilePath, wlanCmd, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+			templateToFile = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
 		} else {
 			// error handling
 			viewErrorAndExit(T("unexpectedEAPType"), fmt.Sprint(eapType))
@@ -437,18 +404,15 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 				Encryption:      "none",
 			}
 		}
-		templateToFile, err = executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
-		if err != nil {
-			viewErrorAndExit("Failed executing template.", err.Error())
-		} else {
-			err = createProfileFile(templateToFile)
-			if err != nil {
-				viewErrorAndExit("Failed creating template.", err.Error())
-			} else {
-				addProfileToMachine(profilePath, wlanCmd, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
-			}
-		}
+		templateToFile = executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
 	}
+	// creates profile file with the executed template
+	createProfileFile(templateToFile)
+	// prepare command line
+	wlanCmd := exec.Command("netsh", "wlan", "add", "profile", "filename="+templateOutPath, "user=all")
+	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile " + ssidString + " in the WiFi networks.")
+	// adds the new profile to Windows with netsh command
+	addProfileToMachine(wlanCmd, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 }
 
 // Configuration for wired
@@ -471,58 +435,23 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int, eapT
 			}
 		}
 	}
-	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profilePath)
+	// creates profile file with the executed template
 	if eapType == EAPTYPE_PEAP {
-		err = createProfileFile(WIRED_PEAP_TEMPLATE)
-		addProfileToMachine(profilePath, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
-		if err != nil {
-			viewErrorAndExit("Failed creating profile file.", err.Error())
-		} else {
-			addNewLinesToDebug("Success creating profile file: " + err.Error())
-		}
+		createProfileFile(WIRED_PEAP_TEMPLATE)
 	} else if eapType == EAPTYPE_TLS {
-		err = createProfileFile(WIRED_TLS_TEMPLATE)
-		addProfileToMachine(profilePath, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
-		if err != nil {
-			viewErrorAndExit("Failed creating profile file.", err.Error())
-		} else {
-			addNewLinesToDebug("Success creating profile file: " + err.Error())
-		}
+		createProfileFile(WIRED_TLS_TEMPLATE)
 	} else {
 		// error handling
 		viewErrorAndExit(T("unexpectedEAPType"), err.Error())
 	}
-}
-
-// Get mobileconfig file and write to local file
-func writeProfileToLocalFile(filepath string, url string) error {
-	// Create the file
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	// Avoid certificate check
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	cli := &http.Client{Transport: tr}
-	// Get the data
-	resp, err := cli.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-	return nil
+	// prepare command line
+	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profilePath)
+	// adds the new profile to Windows with netsh command
+	addProfileToMachine(wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 }
 
 // Create, parse and execute templates
-func executeTemplate(nameTemplate, constTemplate string, templateToApply Template) (string, error) {
+func executeTemplate(nameTemplate, constTemplate string, templateToApply Template) string {
 	newTemplate := template.New(nameTemplate)
 	var templateBuffer bytes.Buffer
 	// parses template
@@ -534,42 +463,37 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 		err = newTemplate.Execute(&templateBuffer, templateToApply)
 		if err != nil {
 			viewErrorAndExit(T("cannotExecuteTemplate"), err.Error())
-			return "", err
+		} else {
+			addNewLinesToDebug(T("executetemplateSuccess") + err.Error())
 		}
-		return templateBuffer.String(), err
 	}
-	return "", nil
+	return templateBuffer.String()
 }
 
 // Create and write profile file into templateToFile folder
-func createProfileFile(templateToFile string) error {
+func createProfileFile(templateToFile string) {
 	// create and open file
-	profileFile, err := os.Create(profilePath)
+	templateFile, _ := createFile(templateOutPath)
+	// write the template into the new file
+	_, err := io.Copy(templateFile, strings.NewReader(templateToFile))
 	if err != nil {
-		viewErrorAndExit(T("cannotCreateProfileFile"), err.Error())
-		return err
+		viewErrorAndExit(T("cannotWriteIntoProfileFile"), err.Error())
 	} else {
-		// close file
-		defer profileFile.Close()
-		// write the template into the new file
-		_, err = io.Copy(profileFile, strings.NewReader(templateToFile))
-		if err != nil {
-			viewErrorAndExit(T("cannotWriteIntoProfileFile"), err.Error())
-			return err
-		}
+		addNewLinesToDebug(T("profileCreationSuccess") + err.Error())
 	}
-	addNewLinesToDebug(T("profileCreationSuccess") + err.Error())
-	return nil
 }
 
 // Add wired and wireless profiles to Windows
-func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, SuccessMessage string) error {
+func addProfileToMachine(cmd *exec.Cmd, ErrorMessage, SuccessMessage string) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		viewErrorAndExit("Failed adding profile", ErrorMessage+"\r\nError: "+err.Error()+"\r\nOutput: "+fmt.Sprint(output))
-		return err
+		cmdLine := fmt.Sprintf("==> Executing: %s\r\n", strings.Join(cmd.Args, " "))
+		errorMess := ErrorMessage + "\r\n"
+		errorOut := "Error: " + err.Error() + "\r\n"
+		outputOut := "Output: " + fmt.Sprint(output) + "\r\n"
+		viewErrorAndExit("Failed adding profile", cmdLine+errorMess+errorOut+outputOut)
 	} else {
 		addNewLinesToDebug("Success adding profile" + SuccessMessage)
-		return nil
+		cleanAndExit(0)
 	}
 }

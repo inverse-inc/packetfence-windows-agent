@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"image"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -112,19 +114,19 @@ func viewErrorAndExit(s string, sExtra string) {
 	}
 	if !debug {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), s+"\r\nPlease enable Debug Mode and contact your local support.", walk.MsgBoxOK)
-		cleanAndExit()
+		cleanAndExit(1)
 	}
 }
 
-func cleanAndExit() {
+func cleanAndExit(c int) {
 	cleanTmpFiles()
 	mw1.Close()
-	os.Exit(1)
+	os.Exit(c)
 }
 
 func cleanTmpFiles() {
 	os.Remove(pngFilePath)
-	os.Remove(tempPath + "\\" + "template-out.xml")
+	os.Remove(templateOutPath)
 	os.Remove(profilePath)
 	os.Remove(cafilePath)
 	os.Remove(userCertPath)
@@ -168,7 +170,7 @@ func prepareBackgroundImage() {
 	debug = false
 }
 
-// Create a filee
+// Create a file
 func createFile(filepath string) (*os.File, error) {
 	f, err := os.Create(filepath)
 	if err != nil {
@@ -176,6 +178,29 @@ func createFile(filepath string) (*os.File, error) {
 	}
 	defer f.Close()
 	return f, err
+}
+
+// Get mobileconfig file and write to local file
+func writeURLToLocalFile(filepath string, url string) error {
+	// Create the file
+	out, _ := createFile(filepath)
+	// Avoid certificate check
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	cli := &http.Client{Transport: tr}
+	// Get the data
+	resp, err := cli.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Decode base64 certificate to string
