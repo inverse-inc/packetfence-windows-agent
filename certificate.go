@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -21,8 +22,7 @@ func getCAFingerprint(caFileBinary string) (string, error) {
 	// open certificate of authority binary file
 	caFile, err := os.Open(caFileBinary)
 	if err != nil {
-		addNewLinesToDebug(T("cannotOpenCAFile") + err.Error())
-		viewErrorAndExit(T("cannotOpenCAFile"))
+		viewErrorAndExit(T("cannotOpenCAFile"), err.Error())
 		defer caFile.Close()
 		return "", err
 	} else {
@@ -33,8 +33,7 @@ func getCAFingerprint(caFileBinary string) (string, error) {
 		hashSha1 := sha1.New()
 		// copy hash to the file
 		if _, err := io.Copy(hashSha1, caFile); err != nil {
-			addNewLinesToDebug(T("cannotCopyCAFile") + err.Error())
-			viewErrorAndExit(T("cannotCopyCAFile"))
+			viewErrorAndExit(T("cannotCopyCAFile"), err.Error())
 			return "", err
 		} else {
 			// returns sha1 checksum of the data
@@ -72,7 +71,7 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 			MainWindow{
 				AssignTo: &mw,
 				Title:    PROGRAM_NAME,
-				MinSize:  Size{350, 100},
+				MinSize:  Size{Width: 350, Height: 100},
 				Layout:   VBox{},
 				Children: []Widget{
 					Label{Text: T("enterCertificatePassword")},
@@ -92,22 +91,18 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 								if exitErr, ok := err.(*exec.ExitError); ok {
 									if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 										exitStatus := status.ExitStatus()
-										addNewLinesToDebug("Exit Status: " + string(exitStatus))
+										addNewLinesToDebug("Exit Status: " + fmt.Sprint(exitStatus))
 										switch exitStatus {
 										case int(ERROR_INVALID_PASSWORD):
-											addNewLinesToDebug(T("wrongPassword"))
-											viewErrorAndExit(T("wrongPassword"))
+											viewErrorAndExit(T("wrongPassword"), "")
 											badCertificatePassword = true
 											mw.Close()
 										case int(ERROR_INVALID_DATA):
-											addNewLinesToDebug(T("invalidCertificate"))
-											viewErrorAndExit(T("invalidCertificate"))
+											viewErrorAndExit(T("invalidCertificate"), "")
 										case int(ERROR_FILE_NOT_FOUND):
-											addNewLinesToDebug(T("cannotFindCertificateFile") + string(exitStatus))
-											viewErrorAndExit(T("cannotFindCertificateFile"))
+											viewErrorAndExit(T("cannotFindCertificateFile"), " => "+fmt.Sprint(exitStatus))
 										default:
-											addNewLinesToDebug(T("cannotInstallCertificate") + string(exitStatus))
-											viewErrorAndExit(T("cannotInstallCertificate"))
+											viewErrorAndExit(T("cannotInstallCertificate"), " => "+fmt.Sprint(exitStatus))
 										}
 									}
 								}
@@ -127,8 +122,7 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 // Add CA to the machine
 func addCAToMachine(caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
 	var err error
-	var ERROR_CANCELED int64
-	ERROR_CANCELED = 2147943623
+	ERROR_CANCELED := 2147943623
 	runCommand := true
 	for runCommand {
 		runCommand = false
@@ -149,8 +143,7 @@ func addCAToMachine(caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
 							addNewLinesToDebug("Failed installing certificate: " + err.Error())
 						}
 					} else {
-						addNewLinesToDebug(T("cannotInstallCA") + err.Error())
-						viewErrorAndExit(T("cannotInstallCA"))
+						viewErrorAndExit(T("cannotInstallCA"), err.Error())
 					}
 				}
 			}

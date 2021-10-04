@@ -18,8 +18,7 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 	// create and open file
 	languageFile, err := os.Create(currentDir + "\\" + languageFileName)
 	if err != nil {
-		addNewLinesToDebug("Unable to create the language file:" + err.Error())
-		viewErrorAndExit("Unable to create the language file.")
+		viewErrorAndExit("Unable to create the language file.", err.Error())
 		return err
 	} else {
 		// close file
@@ -27,8 +26,7 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 		// write the template into the new file
 		_, err = io.Copy(languageFile, strings.NewReader(translationLanguage))
 		if err != nil {
-			addNewLinesToDebug("Unable to write into language file:" + err.Error())
-			viewErrorAndExit("Unable to write into language file.")
+			viewErrorAndExit("Unable to write into language file.", err.Error())
 			return err
 		} else {
 			addNewLinesToDebug("Language file successfully created.")
@@ -48,7 +46,7 @@ func addNewLinesToDebug(mytxt string) {
 		if debugHeight <= 240 {
 			debugHeight = 240
 		}
-		debugTxtsize := walk.Size{400, debugHeight}
+		debugTxtsize := walk.Size{Width: 400, Height: debugHeight}
 		debugTxt.SetMinMaxSize(walk.Size(debugTxtsize), walk.Size(debugTxtsize))
 	} else {
 		log.Print(mytxt)
@@ -108,12 +106,14 @@ func viewClosedButton(b bool) {
 }
 
 // View Error
-func viewErrorAndExit(s string) bool {
+func viewErrorAndExit(s string, sExtra string) {
+	if sExtra != "" {
+		addNewLinesToDebug(s + " " + sExtra)
+	}
 	if !debug {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), s+"\r\nPlease enable Debug Mode and contact your local support.", walk.MsgBoxOK)
 		cleanAndExit()
 	}
-	return true
 }
 
 func cleanAndExit() {
@@ -138,19 +138,16 @@ func prepareBackgroundImage() {
 	decodeBase64ToPng, _, err := image.Decode(reader)
 	addNewLinesToDebug("Welcome to PF debug")
 	if err != nil {
-		addNewLinesToDebug("Unable to decode base 64 background image: " + err.Error())
-		viewErrorAndExit("Unable to decode base 64 background image.")
+		viewErrorAndExit("Unable to decode base 64 background image.", err.Error())
 	} else {
 		//Encode from image format to writer
 		backgroundFile, err := os.Create(pngFilePath)
 		if err != nil {
-			addNewLinesToDebug("Unable to open or create background image: " + err.Error())
-			viewErrorAndExit("Unable to open or create background image.")
+			viewErrorAndExit("Unable to open or create background image.", err.Error())
 		} else {
 			err = png.Encode(backgroundFile, decodeBase64ToPng)
 			if err != nil {
-				addNewLinesToDebug("Unable to encode background image: " + err.Error())
-				viewErrorAndExit("Unable to encode background image.")
+				viewErrorAndExit("Unable to encode background image.", err.Error())
 			} else {
 				addNewLinesToDebug("PNG file " + pngFileName + " successfully created at " + pngFilePath)
 				backgroundFile.Close()
@@ -159,15 +156,14 @@ func prepareBackgroundImage() {
 	}
 	var img walk.Image
 	img, err = walk.NewImageFromFile(pngFilePath)
-	if img != nil {
-		if err := imgView.SetImage(img.(walk.Image)); err != nil {
-			addNewLinesToDebug("Unable to attach the background image: " + err.Error())
-			viewErrorAndExit("Unable to attach background image.")
+	if err != nil {
+		if err := imgView.SetImage(img); err != nil {
+			viewErrorAndExit("Unable to attach background image.", err.Error())
 		} else {
 			addNewLinesToDebug("Been able to attach background image.")
 		}
 	} else {
-		addNewLinesToDebug("Unable to grab background image")
+		addNewLinesToDebug("Unable to get the background image")
 	}
 	debug = false
 }
@@ -176,8 +172,7 @@ func prepareBackgroundImage() {
 func createFile(filepath string) (*os.File, error) {
 	f, err := os.Create(filepath)
 	if err != nil {
-		addNewLinesToDebug("Unable to create file  " + filepath + ": " + err.Error())
-		viewErrorAndExit("Unable to create file  " + filepath + ".")
+		viewErrorAndExit("Unable to create file  "+filepath+".", err.Error())
 	}
 	defer f.Close()
 	return f, err
