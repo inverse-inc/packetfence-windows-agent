@@ -158,7 +158,7 @@ func prepareBackgroundImage() {
 	}
 	img, err := walk.NewImageFromFile(pngFilePath)
 	if err != nil {
-		addNewLinesToDebug("Unable to get the background image from " + pngFilePath + " and error is: " + err.Error())
+		viewErrorAndExit("Unable to get the background image", " from "+pngFilePath+" and error is: "+err.Error())
 	} else {
 		if err := imgView.SetImage(img); err != nil {
 			viewErrorAndExit("Unable to attach background image.", err.Error())
