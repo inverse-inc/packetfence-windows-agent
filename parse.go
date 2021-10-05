@@ -476,6 +476,7 @@ func createProfileFile(templateToFile string) {
 	templateFile, _ := createFile(templateOutPath)
 	// write the template into the new file
 	_, err := io.Copy(templateFile, strings.NewReader(templateToFile))
+	defer templateFile.Close()
 	if err != nil {
 		viewErrorAndExit(T("cannotWriteIntoProfileFile"), err.Error())
 	} else {

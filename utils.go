@@ -176,7 +176,7 @@ func createFile(filepath string) (*os.File, error) {
 	if err != nil {
 		viewErrorAndExit("Unable to create file  "+filepath+".", err.Error())
 	}
-	defer f.Close()
+	//defer f.Close()
 	return f, err
 }
 
@@ -200,6 +200,7 @@ func writeURLToLocalFile(filepath string, url string) error {
 	if err != nil {
 		return err
 	}
+	defer out.Close()
 	return nil
 }
 
