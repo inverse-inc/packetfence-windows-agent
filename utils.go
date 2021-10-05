@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"image"
 	"io"
 	"log"
@@ -195,12 +196,17 @@ func writeURLToLocalFile(filepath string, url string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
+	if resp.StatusCode != 200 {
+		err = errors.New("Not a good answer from server: " + resp.Status)
 		return err
+	} else {
+		// Write the body to file
+		_, err = io.Copy(out, resp.Body)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
 	}
-	defer out.Close()
 	return nil
 }
 
