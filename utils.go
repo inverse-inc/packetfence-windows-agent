@@ -40,7 +40,7 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 func addNewLinesToDebug(mytxt string) {
 	if debug {
 		log.Print(mytxt)
-		myTxtC := chunks(mytxt, 60)
+		myTxtC := chunkLargeStrings(mytxt, 60)
 		myCt := debugTxt.Text()
 		debugTxt.SetText(myCt + myTxtC + "\r\n")
 		numlines := strings.Count(debugTxt.Text(), "\r\n")
@@ -57,7 +57,7 @@ func addNewLinesToDebug(mytxt string) {
 
 // Chunk large string at x charaters
 // Source: https://stackoverflow.com/a/61469854
-func chunks(s string, chunkSize int) string {
+func chunkLargeStrings(s string, chunkSize int) string {
 	if len(s) == 0 {
 		return ""
 	}
@@ -226,10 +226,10 @@ func createCertTempFile(certificate, filePath string) error {
 		addNewLinesToDebug("Failed decoding certificate: " + err.Error())
 		return err
 	}
-	return writeInFIle(myFile, "", decodedCertificate)
+	return writeInFile(myFile, "", decodedCertificate)
 }
 
-func writeInFIle(myFile *os.File, st string, b []byte) error {
+func writeInFile(myFile *os.File, st string, b []byte) error {
 	if _, err := myFile.Write(b); err != nil {
 		addNewLinesToDebug("Failed writing decoded certificate into temp file: " + err.Error())
 		return err
