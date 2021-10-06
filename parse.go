@@ -505,8 +505,10 @@ func addProfileToMachine(cmd *exec.Cmd, ErrorMessage, SuccessMessage string) {
 		errorOut := "Error: " + err.Error() + "\r\n"
 		outputOut := "Output: " + fmt.Sprint(output) + "\r\n"
 		viewErrorAndExit("Failed adding profile", cmdLine+errorMess+errorOut+outputOut)
+	} else if wi.Debug {
+		addNewLinesToDebug("Success adding profile " + SuccessMessage)
 	} else {
-		addNewLinesToDebug("Success adding profile" + SuccessMessage)
+		walk.MsgBox(windowMsgBox, "Success adding profile", SuccessMessage, walk.MsgBoxOK)
 		cleanAndExit(0)
 	}
 }
