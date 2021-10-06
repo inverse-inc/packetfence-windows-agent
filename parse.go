@@ -95,7 +95,6 @@ type WinAgent struct {
 	XmlPlistProfile               map[string]interface{}
 }
 
-var winAgentWindow *WinAgentWindow
 var wi *WinAgent
 
 func main() {
@@ -178,12 +177,14 @@ func main() {
 }
 
 func prepareMainWindow() {
+	winAgent := new(WinAgent)
+	winAgentWindow := new(WinAgentWindow)
+	wi = winAgent
+	wi.Window = winAgentWindow
 	currentWorkingDirectory, err := os.Executable()
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to get current working directory, please contact your local support.", walk.MsgBoxOK)
 	}
-	wi.Window = winAgentWindow
-
 	wi.StableCurrentWorkingDirectory = filepath.Dir(currentWorkingDirectory)
 	wi.TempPath = os.Getenv("tmp")
 	// Access to tmp path
@@ -330,7 +331,6 @@ func fetchXML() {
 
 // Configure wifi
 func configureWifi() {
-	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
 	var templateToFile string
 	var elementsToReplaceInTemplate Template
 	var wifiKey string
@@ -428,14 +428,11 @@ func configureWifi() {
 	wi.WlanCmd = exec.Command("netsh", "wlan", "add", "profile", "filename="+wi.TemplateOutPath, "user=all")
 	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile " + ssidString + " in the WiFi networks.")
 	// adds the new profile to Windows with netsh command
-	addProfileToMachine(wi.WlanCmd, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+	addProfileToMachine(wi.WlanCmd, T("wlanErrorMessage"), wlanSuccessMessage)
 }
 
 // Configuration for wired
 func configureWired() {
-	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
-	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
-
 	dot3svc := exec.Command("net", "start", "dot3svc")
 	dot3svc.Start()
 	if err := dot3svc.Wait(); err != nil {
@@ -463,7 +460,7 @@ func configureWired() {
 	// prepare command line
 	wi.WiredCmd = exec.Command("netsh", "lan", "add", "profile", "filename="+wi.ProfilePath)
 	// adds the new profile to Windows with netsh command
-	addProfileToMachine(wi.WiredCmd, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+	addProfileToMachine(wi.WiredCmd, T("wiredErrorMessage"), T("wiredSuccessMessage"))
 }
 
 // Create, parse and execute templates
