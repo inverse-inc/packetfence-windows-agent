@@ -39,18 +39,18 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 }
 
 func addNewLinesToDebug(mytxt string) {
-	if debug {
+	if wi.Debug {
 		log.Print(mytxt)
 		myTxtC := chunkLargeStrings(mytxt, 60)
-		myCt := debugTxt.Text()
-		debugTxt.SetText(myCt + myTxtC + "\r\n")
-		numlines := strings.Count(debugTxt.Text(), "\r\n")
+		myCt := wi.Window.DebugTxt.Text()
+		wi.Window.DebugTxt.SetText(myCt + myTxtC + "\r\n")
+		numlines := strings.Count(wi.Window.DebugTxt.Text(), "\r\n")
 		debugHeight := (13 * numlines) + 13
 		if debugHeight <= 240 {
 			debugHeight = 240
 		}
 		debugTxtsize := walk.Size{Width: 400, Height: debugHeight}
-		debugTxt.SetMinMaxSize(walk.Size(debugTxtsize), walk.Size(debugTxtsize))
+		wi.Window.DebugTxt.SetMinMaxSize(walk.Size(debugTxtsize), walk.Size(debugTxtsize))
 	} else {
 		log.Print(mytxt)
 	}
@@ -83,30 +83,30 @@ func chunkLargeStrings(s string, chunkSize int) string {
 
 // Enable the debug view
 func viewDebug() {
-	if debug {
-		debug = false
+	if wi.Debug {
+		wi.Debug = false
 		// Change view
 		scb, _ := walk.NewSolidColorBrush(walk.RGB(4, 5, 3))
-		mw1.SetBackground(scb)
-		debugGrpBox.SetVisible(false)
-		imgView.SetVisible(true)
+		wi.Window.Mw1.SetBackground(scb)
+		wi.Window.DebugGrpBox.SetVisible(false)
+		wi.Window.ImgView.SetVisible(true)
 		viewClosedButton(false)
-		configButton.SetText("Configure")
+		wi.Window.ConfigButton.SetText("Configure")
 	} else {
-		debug = true
+		wi.Debug = true
 		// Change view
 		scb, _ := walk.NewSolidColorBrush(walk.RGB(255, 255, 255))
-		mw1.SetBackground(scb)
-		debugGrpBox.SetVisible(true)
-		imgView.SetVisible(false)
+		wi.Window.Mw1.SetBackground(scb)
+		wi.Window.DebugGrpBox.SetVisible(true)
+		wi.Window.ImgView.SetVisible(false)
 		viewClosedButton(true)
-		configButton.SetText("Configure with debug")
+		wi.Window.ConfigButton.SetText("Configure with debug")
 	}
 }
 
 // Enable Close button view
 func viewClosedButton(b bool) {
-	closedButton.SetVisible(b)
+	wi.Window.ClosedButton.SetVisible(b)
 }
 
 // View Error
@@ -114,7 +114,7 @@ func viewErrorAndExit(s string, sExtra string) {
 	if sExtra != "" {
 		addNewLinesToDebug(s + " " + sExtra)
 	}
-	if !debug {
+	if !wi.Debug {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), s+"\r\nPlease enable Debug Mode and contact your local support.", walk.MsgBoxOK)
 		cleanAndExit(1)
 	}
@@ -122,22 +122,22 @@ func viewErrorAndExit(s string, sExtra string) {
 
 func cleanAndExit(c int) {
 	cleanTmpFiles()
-	mw1.Close()
+	wi.Window.Mw1.Close()
 	os.Exit(c)
 }
 
 func cleanTmpFiles() {
-	os.Remove(pngFilePath)
-	os.Remove(templateOutPath)
-	os.Remove(profilePath)
-	os.Remove(cafilePath)
-	os.Remove(userCertPath)
+	os.Remove(wi.PngFilePath)
+	os.Remove(wi.TemplateOutPath)
+	os.Remove(wi.ProfilePath)
+	os.Remove(wi.CaFilePath)
+	os.Remove(wi.UserCertPath)
 }
 
 // Prepare Background image
 // Converts base 64 background image to pf_bg.png
 func prepareBackgroundImage() {
-	debug = true
+	wi.Debug = true
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(BACKGROUND_IMAGE_PF))
 	decodeBase64ToPng, _, err := image.Decode(reader)
 	addNewLinesToDebug("Welcome to PF debug")
@@ -145,7 +145,7 @@ func prepareBackgroundImage() {
 		viewErrorAndExit("Unable to decode base 64 background image.", err.Error())
 	} else {
 		//Encode from image format to writer
-		backgroundFile, err := os.Create(pngFilePath)
+		backgroundFile, err := os.Create(wi.PngFilePath)
 		if err != nil {
 			viewErrorAndExit("Unable to open or create background image.", err.Error())
 		} else {
@@ -153,22 +153,22 @@ func prepareBackgroundImage() {
 			if err != nil {
 				viewErrorAndExit("Unable to encode background image.", err.Error())
 			} else {
-				addNewLinesToDebug("PNG file " + pngFileName + " successfully created at " + pngFilePath)
+				addNewLinesToDebug("PNG file " + wi.PngFileName + " successfully created at " + wi.PngFilePath)
 				backgroundFile.Close()
 			}
 		}
 	}
-	img, err := walk.NewImageFromFile(pngFilePath)
+	img, err := walk.NewImageFromFile(wi.PngFilePath)
 	if err != nil {
-		viewErrorAndExit("Unable to get the background image", " from "+pngFilePath+" and error is: "+err.Error())
+		viewErrorAndExit("Unable to get the background image", " from "+wi.PngFilePath+" and error is: "+err.Error())
 	} else {
-		if err := imgView.SetImage(img); err != nil {
+		if err := wi.Window.ImgView.SetImage(img); err != nil {
 			viewErrorAndExit("Unable to attach background image.", err.Error())
 		} else {
 			addNewLinesToDebug("Been able to attach background image.")
 		}
 	}
-	debug = false
+	wi.Debug = false
 }
 
 // Create a file
@@ -177,7 +177,6 @@ func createFile(filepath string) (*os.File, error) {
 	if err != nil {
 		viewErrorAndExit("Unable to create file  "+filepath+".", err.Error())
 	}
-	//defer f.Close()
 	return f, err
 }
 

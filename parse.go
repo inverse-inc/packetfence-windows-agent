@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -59,41 +60,63 @@ type Template struct {
 }
 type Handle uintptr
 
-var debug = false
-var mw1 *walk.MainWindow
-var configButton, debugButton, closedButton *walk.PushButton
-var imgView *walk.ImageView
-var debugTxt *walk.TextEdit
-var debugGrpBox *walk.GroupBox
-var cafilePath string
+type WinAgentWindow struct {
+	ClosedButton *walk.PushButton
+	ConfigButton *walk.PushButton
+	DebugButton  *walk.PushButton
+	DebugGrpBox  *walk.GroupBox
+	DebugTxt     *walk.TextEdit
+	ImgView      *walk.ImageView
+	Mw1          *walk.MainWindow
+}
 
-var tempPath string
-var pngFileName string
-var pngFilePath string
-var userCertPath string
-var profilePath string
-var templateOutPath string
-var stableCurrentWorkingDirectory string
+type WinAgent struct {
+	CaCert                        string
+	CaFileBinary                  string
+	CaFilePath                    string
+	CaName                        string
+	Debug                         bool
+	EapType                       uint64
+	Err                           error
+	PngFileName                   string
+	PngFilePath                   string
+	ProfilePath                   string
+	StableCurrentWorkingDirectory string
+	WlanCmd                       *exec.Cmd
+	WiredCmd                      *exec.Cmd
+	TemplateOutPath               string
+	TempPath                      string
+	UserCert                      string
+	UserCertDecode                string
+	UserCertPath                  string
+	WifiIndex                     int
+	Window                        *WinAgentWindow
+	WiredIndex                    int
+	XmlPlistProfile               map[string]interface{}
+}
+
+var winAgentWindow *WinAgentWindow
+var wi *WinAgent
 
 func main() {
 	hideConsole()
 	prepareMainWindow()
 	if err := (MainWindow{
-		AssignTo:   &mw1,
+		AssignTo:   &wi.Window.Mw1,
 		Title:      fmt.Sprintf("%s - %s", PROGRAM_NAME, VERSION),
 		MinSize:    Size{Width: 500, Height: 400},
 		Layout:     VBox{},
 		Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
 		Children: []Widget{
 			ImageView{
-				AssignTo:   &imgView,
+				AssignTo:   &wi.Window.ImgView,
 				Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
 				//Image:      pngFileName,
 				Visible: true,
 			},
 			GroupBox{
 				Title:    "Configuration Debug output",
-				AssignTo: &debugGrpBox,
+				AssignTo: &wi.Window.DebugGrpBox,
 				Visible:  false,
 				Layout:   VBox{},
 				Children: []Widget{
@@ -103,7 +126,7 @@ func main() {
 						Children: []Widget{
 							TextEdit{
 								MinSize:  Size{Width: 400, Height: 10},
-								AssignTo: &debugTxt,
+								AssignTo: &wi.Window.DebugTxt,
 								ReadOnly: false,
 								Text:     "",
 							},
@@ -112,7 +135,7 @@ func main() {
 				},
 			},
 			PushButton{
-				AssignTo:   &configButton,
+				AssignTo:   &wi.Window.ConfigButton,
 				Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
 				MinSize:    Size{Width: 50, Height: 50},
 				Text:       "Configure",
@@ -121,7 +144,7 @@ func main() {
 				},
 			},
 			PushButton{
-				AssignTo:   &debugButton,
+				AssignTo:   &wi.Window.DebugButton,
 				Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
 				MinSize:    Size{Width: 10, Height: 10},
 				Text:       "Debug",
@@ -130,7 +153,7 @@ func main() {
 				},
 			},
 			PushButton{
-				AssignTo:   &closedButton,
+				AssignTo:   &wi.Window.ClosedButton,
 				Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
 				MinSize:    Size{Width: 10, Height: 10},
 				Text:       "Close",
@@ -142,7 +165,7 @@ func main() {
 		},
 		OnSizeChanged: func() {
 			mw1size := Size{Width: 500, Height: 400}
-			mw1.SetSize(walk.Size(mw1size))
+			wi.Window.Mw1.SetSize(walk.Size(mw1size))
 		},
 	}.Create()); err != nil {
 		log.Print("Failed opening main window: ", err.Error())
@@ -151,7 +174,7 @@ func main() {
 	prepareEnv()
 	prepareBackgroundImage()
 
-	mw1.Run()
+	wi.Window.Mw1.Run()
 }
 
 func prepareMainWindow() {
@@ -159,17 +182,19 @@ func prepareMainWindow() {
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to get current working directory, please contact your local support.", walk.MsgBoxOK)
 	}
-	stableCurrentWorkingDirectory = filepath.Dir(currentWorkingDirectory)
-	tempPath = os.Getenv("tmp")
+	wi.Window = winAgentWindow
+
+	wi.StableCurrentWorkingDirectory = filepath.Dir(currentWorkingDirectory)
+	wi.TempPath = os.Getenv("tmp")
 	// Access to tmp path
-	if tempPath == "" {
+	if wi.TempPath == "" {
 		viewErrorAndExit(T("invalidTempPath"), "")
 	}
-	walk.Resources.SetRootDirPath(tempPath)
+	walk.Resources.SetRootDirPath(wi.TempPath)
 }
 
 func prepareEnv() {
-	debug = true
+	wi.Debug = true
 	addNewLinesToDebug("============== PacketFence Provisioning Agent ==============")
 
 	// Internationalization (i18n)
@@ -178,36 +203,36 @@ func prepareEnv() {
 	switch localeInfo {
 	case SUBLANG_FRENCH, SUBLANG_FRENCH_CANADIAN, SUBLANG_FRENCH_BELGIAN, SUBLANG_FRENCH_LUXEMBOURG, SUBLANG_FRENCH_MONACO, SUBLANG_FRENCH_SWISS:
 		languageFileName := "fr.json"
-		createLanguageFile(stableCurrentWorkingDirectory, FRENCH_TRANSLATION, languageFileName)
+		createLanguageFile(wi.StableCurrentWorkingDirectory, FRENCH_TRANSLATION, languageFileName)
 		i18n.MustLoadTranslationFile(languageFileName)
 		T, _ = i18n.Tfunc("fr")
 		addNewLinesToDebug("Program will be translated in french.")
 	default:
 		languageFileName := "en.json"
-		createLanguageFile(stableCurrentWorkingDirectory, ENGLISH_TRANSLATION, languageFileName)
+		createLanguageFile(wi.StableCurrentWorkingDirectory, ENGLISH_TRANSLATION, languageFileName)
 		i18n.MustLoadTranslationFile(languageFileName)
 		T, _ = i18n.Tfunc("en")
 		addNewLinesToDebug("Program will be translated in english.")
 	}
 
-	pngFileName = "pf_bg.png"
-	pngFilePath = tempPath + "\\" + pngFileName
-	userCertPath = ""
-	profilePath = tempPath + "\\profile.xml"
-	templateOutPath = tempPath + "\\template-out.xml"
-	debug = false
+	wi.PngFileName = "pf_bg.png"
+	wi.PngFilePath = wi.TempPath + "\\" + wi.PngFileName
+	wi.UserCertPath = ""
+	wi.ProfilePath = wi.TempPath + "\\profile.xml"
+	wi.TemplateOutPath = wi.TempPath + "\\template-out.xml"
+	wi.UserCertPath = wi.TempPath + "\\" + "certificate.p12"
+
+	wi.Debug = false
 }
 
 func fetchPortalDomainName() {
-	var xmlPlistProfile map[string]interface{}
-
 	// Download mobileconfig file
-	err := writeURLToLocalFile(profilePath, PROFILE_URL)
+	err := writeURLToLocalFile(wi.ProfilePath, PROFILE_URL)
 	if err != nil {
 		viewErrorAndExit(T("cannotRetrieveProfileFile"), err.Error())
 	} else {
 		// Read xml profile, convert to string
-		data, err := ioutil.ReadFile(profilePath)
+		data, err := ioutil.ReadFile(wi.ProfilePath)
 		if err != nil {
 			viewErrorAndExit(T("cannotReadProfileData"), err.Error())
 		} else {
@@ -215,7 +240,7 @@ func fetchPortalDomainName() {
 			dataToString := string(data)
 			buffer := bytes.NewReader([]byte(dataToString))
 			decoder := plist.NewDecoder(buffer)
-			err = decoder.Decode(&xmlPlistProfile)
+			err = decoder.Decode(&wi.XmlPlistProfile)
 			if err != nil {
 				viewErrorAndExit(T("cannotDecodeProfileFile"), err.Error())
 			} else {
@@ -226,24 +251,16 @@ func fetchPortalDomainName() {
 }
 
 func fetchXML() {
-	var xmlPlistProfile map[string]interface{}
-	var wifiIndex int
-	var wiredIndex int
-	var eapType uint64
-	var userCertDecode string
-	var caFileBinary string
-	var err error
-
 	// Get data from the mobileconfig file
 	shouldConfigureWifi := false
 	shouldConfigureWired := false
 	sum := 0
 
 	// Get PayloadContent length
-	lengthPayloadContent := len(xmlPlistProfile["PayloadContent"].([]interface{}))
+	lengthPayloadContent := len(wi.XmlPlistProfile["PayloadContent"].([]interface{}))
 
 	for i := 0; i < lengthPayloadContent; i++ {
-		payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[i].(map[string]interface{})
+		payloadContent := wi.XmlPlistProfile["PayloadContent"].([]interface{})[i].(map[string]interface{})
 		payloadType := payloadContent["PayloadType"].(string)
 
 		switch payloadType {
@@ -251,52 +268,51 @@ func fetchXML() {
 		case "com.apple.wifi.managed":
 			shouldConfigureWifi = true
 			// get dict index
-			wifiIndex = i
+			wi.WifiIndex = i
 			// Get the EAP type to avoid importing the RADIUS cert as a CA
 			eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 			if ok {
-				eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
-				addNewLinesToDebug("Extract Wireless configuration profile: " + fmt.Sprint(eapType))
+				wi.EapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
+				addNewLinesToDebug("Extract Wireless configuration profile: " + fmt.Sprint(wi.EapType))
 			} else {
-				viewErrorAndExit("Failed Extract Wireless configuration profile", fmt.Sprint(eapType))
+				viewErrorAndExit("Failed Extract Wireless configuration profile", fmt.Sprint(wi.EapType))
 			}
 		// Wired configuration
 		case "com.apple.firstactiveethernet.managed":
 			shouldConfigureWired = true
-			wiredIndex = i
+			wi.WiredIndex = i
 			eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 			if ok {
-				eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
-				addNewLinesToDebug("Extract Wired configuration profile: " + fmt.Sprint(eapType))
+				wi.EapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
+				addNewLinesToDebug("Extract Wired configuration profile: " + fmt.Sprint(wi.EapType))
 			} else {
-				viewErrorAndExit("Failed Extract Wired configuration profile", fmt.Sprint(eapType))
+				viewErrorAndExit("Failed Extract Wired configuration profile", fmt.Sprint(wi.EapType))
 			}
 		// User certificate configuration
 		case "com.apple.security.pkcs12":
-			userCert := payloadContent["PayloadContent"].(string)
-			userCertPath = tempPath + "\\" + "certificate.p12"
-			err = createCertTempFile(userCert, userCertPath)
-			if err != nil {
-				viewErrorAndExit(T("cannotGenerateCertificateFile"), err.Error())
+			wi.UserCert = payloadContent["PayloadContent"].(string)
+			wi.Err = createCertTempFile(wi.UserCert, wi.UserCertPath)
+			if wi.Err != nil {
+				viewErrorAndExit(T("cannotGenerateCertificateFile"), wi.Err.Error())
 			} else {
-				err = addCertToMachine(userCertDecode, CERTUTIL_PROGRAM_PATH)
-				if err != nil {
-					viewErrorAndExit(T("cannotDecodeProfileFile"), err.Error())
+				wi.Err = addCertToMachine(wi.UserCertDecode, CERTUTIL_PROGRAM_PATH)
+				if wi.Err != nil {
+					viewErrorAndExit(T("cannotDecodeProfileFile"), wi.Err.Error())
 				}
 			}
 		// Certificate of Authority configuration
 		case "com.apple.security.root":
-			if eapType == EAPTYPE_TLS {
-				caName := payloadContent["PayloadCertificateFileName"].(string)
-				caCert := payloadContent["PayloadContent"].(string)
-				cafilePath = tempPath + "\\" + caName + ".cer"
-				err = createCertTempFile(caCert, cafilePath)
-				if err != nil {
-					viewErrorAndExit(T("cannotGenerateCAFile"), err.Error())
+			if wi.EapType == EAPTYPE_TLS {
+				wi.CaName = payloadContent["PayloadCertificateFileName"].(string)
+				wi.CaCert = payloadContent["PayloadContent"].(string)
+				wi.CaFilePath = wi.TempPath + "\\" + wi.CaName + ".cer"
+				wi.Err = createCertTempFile(wi.CaCert, wi.CaFilePath)
+				if wi.Err != nil {
+					viewErrorAndExit(T("cannotGenerateCAFile"), wi.Err.Error())
 				}
-				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
-				if err != nil {
-					viewErrorAndExit(T("cannotDecodeProfileFile"), err.Error())
+				wi.Err = addCAToMachine(wi.CaFileBinary, CERTUTIL_PROGRAM_PATH)
+				if wi.Err != nil {
+					viewErrorAndExit(T("cannotDecodeProfileFile"), wi.Err.Error())
 				}
 			}
 		default:
@@ -305,21 +321,21 @@ func fetchXML() {
 		sum += i
 	}
 	if shouldConfigureWifi {
-		configureWifi(xmlPlistProfile, wifiIndex, eapType, caFileBinary)
+		configureWifi()
 	}
 	if shouldConfigureWired {
-		configureWired(xmlPlistProfile, wiredIndex, eapType)
+		configureWired()
 	}
 }
 
 // Configure wifi
-func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapType uint64, caFileBinary string) {
+func configureWifi() {
 	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
 	var templateToFile string
 	var elementsToReplaceInTemplate Template
 	var wifiKey string
 	// Get SSID information
-	payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wifiIndex].(map[string]interface{})
+	payloadContent := wi.XmlPlistProfile["PayloadContent"].([]interface{})[wi.WifiIndex].(map[string]interface{})
 	ssidString := payloadContent["SSID_STR"].(string)
 	ssidStringToHex := hex.EncodeToString([]byte(ssidString))
 	ssidBroadcast := payloadContent["HIDDEN_NETWORK"].(bool)
@@ -339,7 +355,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 		} else {
 			userAuth = "certificate"
 		}
-		if eapType == EAPTYPE_PEAP {
+		if wi.EapType == EAPTYPE_PEAP {
 			// Search specific fields in wintemplate and replace them
 			elementsToReplaceInTemplate = Template{
 				ProfileName:     ssidString,
@@ -350,8 +366,8 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 			}
 			// executes the template
 			templateToFile = executeTemplate(WIFI_PEAP_TEMPLATE_NAME, WIFI_PEAP_TEMPLATE, elementsToReplaceInTemplate)
-		} else if eapType == EAPTYPE_TLS {
-			caFingerprint, err := getCAFingerprint(caFileBinary)
+		} else if wi.EapType == EAPTYPE_TLS {
+			caFingerprint, err := getCAFingerprint(wi.CaFileBinary)
 			if err != nil {
 				viewErrorAndExit(T("Unable to get CA fingerprint."), err.Error())
 			}
@@ -366,9 +382,9 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 			templateToFile = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
 		} else {
 			// error handling
-			viewErrorAndExit(T("unexpectedEAPType"), fmt.Sprint(eapType))
+			viewErrorAndExit(T("unexpectedEAPType"), fmt.Sprint(wi.EapType))
 		}
-		addNewLinesToDebug("EAPType is " + fmt.Sprintf("%v", eapType))
+		addNewLinesToDebug("EAPType is " + fmt.Sprint(wi.EapType))
 	} else {
 		wifiKey = payloadContent["Password"].(string)
 		addNewLinesToDebug("Security type: " + securityType)
@@ -409,17 +425,16 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int, eapTyp
 	// creates profile file with the executed template
 	createProfileFile(templateToFile)
 	// prepare command line
-	wlanCmd := exec.Command("netsh", "wlan", "add", "profile", "filename="+templateOutPath, "user=all")
+	wi.WlanCmd = exec.Command("netsh", "wlan", "add", "profile", "filename="+wi.TemplateOutPath, "user=all")
 	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile " + ssidString + " in the WiFi networks.")
 	// adds the new profile to Windows with netsh command
-	addProfileToMachine(wlanCmd, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+	addProfileToMachine(wi.WlanCmd, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 }
 
 // Configuration for wired
-func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int, eapType uint64) {
+func configureWired() {
 	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
 	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
-	var err error
 
 	dot3svc := exec.Command("net", "start", "dot3svc")
 	dot3svc.Start()
@@ -436,18 +451,19 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int, eapT
 		}
 	}
 	// creates profile file with the executed template
-	if eapType == EAPTYPE_PEAP {
+	if wi.EapType == EAPTYPE_PEAP {
 		createProfileFile(WIRED_PEAP_TEMPLATE)
-	} else if eapType == EAPTYPE_TLS {
+	} else if wi.EapType == EAPTYPE_TLS {
 		createProfileFile(WIRED_TLS_TEMPLATE)
 	} else {
 		// error handling
-		viewErrorAndExit(T("unexpectedEAPType"), err.Error())
+		wi.Err = errors.New("Not good EAP type: " + fmt.Sprint(wi.EapType))
+		viewErrorAndExit(T("unexpectedEAPType"), wi.Err.Error())
 	}
 	// prepare command line
-	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profilePath)
+	wi.WiredCmd = exec.Command("netsh", "lan", "add", "profile", "filename="+wi.ProfilePath)
 	// adds the new profile to Windows with netsh command
-	addProfileToMachine(wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+	addProfileToMachine(wi.WiredCmd, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 }
 
 // Create, parse and execute templates
@@ -464,7 +480,7 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 		if err != nil {
 			viewErrorAndExit(T("cannotExecuteTemplate"), err.Error())
 		} else {
-			addNewLinesToDebug(T("executetemplateSuccess") + err.Error())
+			addNewLinesToDebug(T("executetemplateSuccess"))
 		}
 	}
 	return templateBuffer.String()
@@ -473,14 +489,13 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 // Create and write profile file into templateToFile folder
 func createProfileFile(templateToFile string) {
 	// create and open file
-	templateFile, _ := createFile(templateOutPath)
+	templateFile, _ := createFile(wi.TemplateOutPath)
 	// write the template into the new file
 	_, err := io.Copy(templateFile, strings.NewReader(templateToFile))
-	defer templateFile.Close()
 	if err != nil {
 		viewErrorAndExit(T("cannotWriteIntoProfileFile"), err.Error())
 	} else {
-		addNewLinesToDebug(T("profileCreationSuccess") + err.Error())
+		addNewLinesToDebug(T("profileCreationSuccess"))
 	}
 }
 
