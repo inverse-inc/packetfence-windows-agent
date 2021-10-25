@@ -122,7 +122,7 @@ func addCertToMachine(userCertDecode string, CERTUTIL_PROGRAM_PATH string) error
 // Add CA to the machine
 func addCAToMachine(caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
 	var err error
-	ERROR_CANCELED := 2147943623
+	ERROR_CANCELED := int64(2147943623)
 	runCommand := true
 	for runCommand {
 		runCommand = false
