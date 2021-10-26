@@ -148,7 +148,7 @@ func addCAToMachine(caFileBinary string, CERTUTIL_PROGRAM_PATH string) error {
 				}
 			}
 		} else {
-			addNewLinesToDebug(T("caInstallationSuccess") + err.Error())
+			addNewLinesToDebug(T("caInstallationSuccess"))
 		}
 	}
 	return err
