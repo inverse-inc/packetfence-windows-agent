@@ -19,7 +19,7 @@ import (
 	"text/template"
 
 	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
+	."github.com/lxn/walk/declarative"
 	"github.com/lxn/win"
 	"github.com/nicksnyder/go-i18n/i18n"
 	"howett.net/plist"
@@ -89,6 +89,7 @@ type WinAgent struct {
 	UserCert                      string
 	UserCertDecode                string
 	UserCertPath                  string
+	VersionAfter2004              bool
 	WifiIndex                     int
 	Window                        *WinAgentWindow
 	WiredIndex                    int
@@ -222,7 +223,7 @@ func prepareEnv() {
 	wi.ProfilePath = wi.TempPath + "\\profile.xml"
 	wi.TemplateOutPath = wi.TempPath + "\\template-out.xml"
 	wi.UserCertPath = wi.TempPath + "\\" + "certificate.p12"
-
+	wi.VersionAfter2004 = windowsVersionAfter2004()
 	wi.Debug = false
 }
 
@@ -348,13 +349,12 @@ func configureWifi() {
 	eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 	if ok {
 		userAuth, ok := eapClientConfiguration["UserName"].(string)
-		if ok {
-			if userAuth == "" {
-				userAuth = "certificate"
-			}
-		} else {
+		if !ok {
+			userAuth = "certificate"
+		} else if ok && userAuth == "" {
 			userAuth = "certificate"
 		}
+
 		if wi.EapType == EAPTYPE_PEAP {
 			// Search specific fields in wintemplate and replace them
 			elementsToReplaceInTemplate = Template{
@@ -384,10 +384,10 @@ func configureWifi() {
 			// error handling
 			viewErrorAndExit(T("unexpectedEAPType"), fmt.Sprint(wi.EapType))
 		}
-		addNewLinesToDebug("EAPType is " + fmt.Sprint(wi.EapType))
+		addNewLinesToDebug("EAP Type is: " + fmt.Sprint(wi.EapType))
 	} else {
 		wifiKey = payloadContent["Password"].(string)
-		addNewLinesToDebug("Security type: " + securityType)
+		addNewLinesToDebug("Security type is: " + securityType)
 		switch securityType {
 		case "WEP":
 			elementsToReplaceInTemplate = Template{

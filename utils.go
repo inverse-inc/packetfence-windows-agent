@@ -3,17 +3,20 @@ package main
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"image"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"encoding/base64"
 	"image/png"
 
 	"github.com/lxn/walk"
+	"golang.org/x/sys/windows/registry"
 )
 
 // Create and write profile file into templateToFile folder
@@ -36,6 +39,31 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 			return nil
 		}
 	}
+}
+
+func getCurrentBuikdWindows() int {
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows NT\CurrentVersion`, registry.QUERY_VALUE)
+	if err != nil {
+		addNewLinesToDebug("Failed to get the current windows version: " + fmt.Sprint(err.Error()))
+	}
+	defer k.Close()
+	cb, _, err := k.GetStringValue("CurrentBuild")
+	if err != nil {
+		addNewLinesToDebug("Failed to get the current build windows: " + fmt.Sprint(err.Error()))
+	}
+	i, err := strconv.ParseInt(cb, 10, 32)
+	return int(i)
+}
+
+func windowsVersionAfter2004() bool {
+	i := getCurrentBuikdWindows()
+	if i >= 19041 {
+		addNewLinesToDebug("The current build windows is after 2004 version: " + fmt.Sprint(i))
+		return true
+	}
+	// need to be developped
+	addNewLinesToDebug("The current build windows is before 2004 version: " + fmt.Sprint(i) + "So, may be fail for wireless if not admin")
+	return false
 }
 
 func addNewLinesToDebug(mytxt string) {
