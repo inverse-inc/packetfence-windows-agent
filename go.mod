@@ -15,6 +15,7 @@ require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pelletier/go-toml v1.2.1-0.20180724185102-c2dbbc24a979 // indirect
+	golang.org/x/sys v0.0.0-20211031064116-611d5d643895
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	gopkg.in/yaml.v2 v2.2.1 // indirect
 )
