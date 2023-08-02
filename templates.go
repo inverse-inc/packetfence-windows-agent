@@ -217,7 +217,6 @@ const WIRED_PEAP_TEMPLATE = `<LANProfile xmlns="http://www.microsoft.com/network
                    <msPeap:DisableUserPromptForServerValidation>false</msPeap:DisableUserPromptForServerValidation>
                    <msPeap:TrustedRootCA/>
                  </msPeap:ServerValidation>
-                 <msPeap:PerformServerValidation>false</msPeap:PerformServerValidation>
                  <msPeap:FastReconnect>true</msPeap:FastReconnect>
                  <msPeap:InnerEapOptional>0</msPeap:InnerEapOptional>
                  <baseEap:Eap>
