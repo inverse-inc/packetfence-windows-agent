@@ -113,7 +113,7 @@ const WIFI_TLS_TEMPLATE = `<WLANProfile xmlns="http://www.microsoft.com/networki
                     <TrustedRootCA>{{.CaToTrust}}</TrustedRootCA>
                   </ServerValidation>
                   <DifferentUsername>false</DifferentUsername>
-                  <PerformServerValidation xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">true</PerformServerValidation>
+                  <PerformServerValidation xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">false</PerformServerValidation>
                   <AcceptServerName xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">false</AcceptServerName>
                   </EapType>
               </Eap>
