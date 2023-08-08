@@ -173,7 +173,6 @@ func Configure() {
 	// Get data from the mobileconfig file
 	shouldConfigureWifi := false
 	shouldConfigureWired := false
-	sum := 0
 
 	// Get PayloadContent length
 	lengthPayloadContent := len(xmlPlistProfile["PayloadContent"].([]interface{}))
@@ -238,7 +237,6 @@ func Configure() {
 			log.Fatal("Unexpected PayloadType: ", payloadType)
 			os.Exit(1)
 		}
-		sum += i
 	}
 
 	if shouldConfigureWifi {
