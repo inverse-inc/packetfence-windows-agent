@@ -70,7 +70,7 @@ func main() {
 	TempPATH = os.Getenv("tmp")
 	if TempPATH == "" {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTempPATH"), walk.MsgBoxOK)
-		log.Fatal("Failed found a temporary directory: ", err)
+		log.Fatal("Failed found a temporary directory")
 	}
 
 	log.Println("==================== PacketFence Provisioning Agent ===================")
@@ -270,6 +270,7 @@ func Configure() {
 
 func configureWifi(payloadContent map[string]interface{}){
 	var elementsToReplaceInTemplate Template
+	var eapType uint64
 	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
 	var wifiKey string
 	var templateToFile string
@@ -408,6 +409,7 @@ func configureWifi(payloadContent map[string]interface{}){
 func configureWired(payloadContent map[string]interface{}) {
 	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
 	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
+	var eapType uint64
 
 	dot3svc := exec.Command("net", "start", "dot3svc")
 	dot3svc.Start()
