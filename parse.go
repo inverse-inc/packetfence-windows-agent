@@ -207,9 +207,13 @@ func Configure() {
 			fileExtension := ".p12"
 			alertMessage := T("cannotGenerateCertificateFile")
 			userCertDecode, err = createCertTempFile(tempPath, userCert, userAuth, fileExtension, alertMessage)
-			err = addCertToMachine(userCertDecode, CERTUTIL_PROGRAM_PATH)
 			if err != nil {
 				log.Fatal("Failed creating profile: ", err)
+				os.Exit(1)
+			}
+			err = addCertToMachine(userCertDecode, CERTUTIL_PROGRAM_PATH)
+			if err != nil {
+				log.Fatal("Failed adding Cert: ", err)
 				os.Exit(1)
 			}
 		// Certificate of Authority configuration
