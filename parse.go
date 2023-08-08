@@ -221,9 +221,13 @@ func Configure() {
 				fileExtension := ".cer"
 				alertMessage := T("cannotGenerateCAFile")
 				caFileBinary, err = createCertTempFile(tempPath, caCert, caName, fileExtension, alertMessage)
-				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
 				if err != nil {
 					log.Fatal("Failed creating profile: ", err)
+					os.Exit(1)
+				}
+				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
+				if err != nil {
+					log.Fatal("Failed adding CA: ", err)
 					os.Exit(1)
 				}
 			}
