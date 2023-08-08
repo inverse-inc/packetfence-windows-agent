@@ -7,8 +7,15 @@ import (
 	"os"
 	"strings"
 
+	"crypto/tls"
+	"net/http"
+	"text/template"
+	"strings"
+
 	"encoding/base64"
 	"image/png"
+	"os/exec"
+
 
 	"github.com/lxn/walk"
 	"github.com/tink-ab/tempfile"
@@ -169,7 +176,7 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 // Create and write profile file into templateToFile folder
 func createProfileFile(profileTemplated string, templateToFile string) error {
 	// create and open file
-\	profileFile, err := os.Create(profileTemplated)
+	profileFile, err := os.Create(profileTemplated)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateProfileFile"), walk.MsgBoxOK)
 		log.Println("Failed creating profile file: ", err)

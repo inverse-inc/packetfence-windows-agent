@@ -11,13 +11,10 @@ import (
 	"strings"
 	"syscall"
 
-	"crypto/tls"
 	"encoding/hex"
 	"io/ioutil"
-	"net/http"
 	"os/exec"
 	"path/filepath"
-	"text/template"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
