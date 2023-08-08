@@ -27,7 +27,7 @@ import (
 )
 
 const PROGRAM_NAME = "PacketFence Provisioning Agent"
-const VERSION = "1.0.1"
+const VERSION = "1.0.2"
 
 const CERTUTIL_PROGRAM_PATH = "C:\\Windows\\System32\\certutil.exe"
 const WIFI_PEAP_TEMPLATE_NAME = "wireless PEAP template"
