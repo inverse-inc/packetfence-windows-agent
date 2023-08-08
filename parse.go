@@ -27,7 +27,7 @@ import (
 )
 
 const PROGRAM_NAME = "PacketFence Provisioning Agent"
-const VERSION = "1.0.1"
+const VERSION = "1.0.2"
 
 const CERTUTIL_PROGRAM_PATH = "C:\\Windows\\System32\\certutil.exe"
 const WIFI_PEAP_TEMPLATE_NAME = "wireless PEAP template"
@@ -49,6 +49,9 @@ var T i18n.TranslateFunc
 
 var windowMsgBox walk.Form
 
+var TEMP_PATH
+
+
 type Template struct {
 	ProfileName     string // replace by SSIDString
 	SsidStringToHex string // replace by hex SSIDString
@@ -63,12 +66,19 @@ type Handle uintptr
 
 func main() {
 	hideConsole()
+	// Set temp directory
+	TEMP_PATH = os.Getenv("tmp")
+	if TEMP_PATH == "" {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTEMP_PATH"), walk.MsgBoxOK)
+		log.Fatal("Failed found a temporary directory: ", err)
+	}
 
 	log.Println("==================== PacketFence Provisioning Agent ===================")
 
 	currentWorkingDirectory, err := os.Executable()
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to get current working directory, please contact your local support.", walk.MsgBoxOK)
+		log.Fatal("Unable to get current working directory, please contact your local support.") 
 	}
 	stableCurrentWorkingDirectory := filepath.Dir(currentWorkingDirectory)
 
@@ -89,9 +99,9 @@ func main() {
 	}
 
 	// Main window
-	tempPath := os.Getenv("tmp")
-	walk.Resources.SetRootDirPath(tempPath)
-	_, pfBg := base64ToPng(BACKGROUND_IMAGE_PF, tempPath)
+	pngFilePath := TEMP_PATH + "\\pf_bg.png"
+	walk.Resources.SetRootDirPath(TEMP_PATH)
+	_, pfBg := base64ToPng(BACKGROUND_IMAGE_PF, pngFilePath)
 	var mw1 *walk.MainWindow
 	if _, err := (MainWindow{
 		AssignTo:   &mw1,
@@ -116,11 +126,26 @@ func main() {
 		},
 	}.Run()); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("errorMainWindow"), walk.MsgBoxOK)
-		log.Fatal("Failed opening main window: ", err)
+		log.Println("Failed opening main window: ", err)
 		os.Exit(1)
 	}
-	os.Remove(tempPath + "\\" + "pf_bg.png")
+	os.Remove(TEMP_PATH + "\\pf_bg.png")
 	os.Exit(0)
+}
+
+func clean_files() {
+	pngFilePath := TEMP_PATH + "\\pf_bg.png")
+	os.Remove(pngFilePath)
+	profileTemplated := TEMP_PATH + "\\template-out.xml"
+	os.Remove(profileTemplated)
+	profileDownloaded := TEMP_PATH + "\\profile.xml"
+	os.Remove(profileDownloaded)
+}
+
+func exit_1(fatal_message string) {
+	log.Println(fatal_message)
+	clean_files()
+	os.Exit(1)
 }
 
 func Configure() {
@@ -136,27 +161,21 @@ func Configure() {
 	var caFileBinary string
 	var wifiIndex int
 	var wiredIndex int
-	tempPath := os.Getenv("tmp")
-	if tempPath == "" {
-		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTempPath"), walk.MsgBoxOK)
-		os.Exit(1)
-	}
-	profileFile := tempPath + "\\template-out.xml"
+	profileDownloaded := TEMP_PATH + "\\profile.xml"
+	profileTemplated := TEMP_PATH + "\\template-out.xml"
 
 	// Download mobileconfig file
-	err := writeProfileToLocalFile("profile.xml", PROFILE_URL)
+	err := downloadProfileFromPF(profileDownloaded, PROFILE_URL)
 	if err != nil {
-		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotRetrieveProfileFile"), walk.MsgBoxOK)
-		log.Fatal("Failed loading profile: ", err)
-		os.Exit(1)
+		exit_1("", err)
 	}
 
 	// Read xml profile, convert to string
-	data, err := ioutil.ReadFile("profile.xml")
+	data, err := ioutil.ReadFile(profileDownloaded)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotReadProfileData"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed reading profile: ", err)
+		log.Println("Failed reading profile: ", err)
+		exit_1()
 	}
 
 	// Decode converted xml profile
@@ -166,8 +185,8 @@ func Configure() {
 	err = decoder.Decode(&xmlPlistProfile)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotDecodeProfileFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed decoding profile: ", err)
+		log.Println("Failed decoding profile: ", err)
+		exit_1()
 	}
 
 	// Get data from the mobileconfig file
@@ -206,15 +225,17 @@ func Configure() {
 			userAuth := "certificate"
 			fileExtension := ".p12"
 			alertMessage := T("cannotGenerateCertificateFile")
-			userCertDecode, err = createCertTempFile(tempPath, userCert, userAuth, fileExtension, alertMessage)
+			userCertDecode, err = createCertTempFile(TEMP_PATH, userCert, userAuth, fileExtension, alertMessage)
 			if err != nil {
-				log.Fatal("Failed creating profile: ", err)
-				os.Exit(1)
+				log.Println("Failed creating profile: ", err)
+				os.Remove(userCertDecode)
+				exit_1()
 			}
 			err = addCertToMachine(userCertDecode, CERTUTIL_PROGRAM_PATH)
 			if err != nil {
-				log.Fatal("Failed adding Cert: ", err)
-				os.Exit(1)
+				log.Println("Failed adding Cert: ", err)
+				os.Remove(userCertDecode)
+				exit_1()
 			}
 		// Certificate of Authority configuration
 		case "com.apple.security.root":
@@ -223,23 +244,25 @@ func Configure() {
 				caCert := payloadContent["PayloadContent"].(string)
 				fileExtension := ".cer"
 				alertMessage := T("cannotGenerateCAFile")
-				caFileBinary, err = createCertTempFile(tempPath, caCert, caName, fileExtension, alertMessage)
+				caFileBinary, err = createCertTempFile(TEMP_PATH, caCert, caName, fileExtension, alertMessage)
 				if err != nil {
-					log.Fatal("Failed creating profile: ", err)
-					os.Exit(1)
+					log.Println("Failed creating profile: ", err)
+					os.Remove(caFileBinary)
+					exit_1()
 				}
 				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
 				if err != nil {
-					log.Fatal("Failed adding CA: ", err)
-					os.Exit(1)
+					log.Println("Failed adding CA: ", err)
+					os.Remove(caFileBinary)
+					exit_1()
 				}
 			}
 		default:
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("Unexpected PayloadType {{.PayloadType}} please contact your local support.", map[string]interface{}{
 				"PayloadType": payloadType,
 			}), walk.MsgBoxOK)
-			log.Fatal("Unexpected PayloadType: ", payloadType)
-			os.Exit(1)
+			log.Println("Unexpected PayloadType: ", payloadType)
+			exit_1()
 		}
 	}
 
@@ -253,12 +276,6 @@ func Configure() {
 		if securityType == "None" {
 			securityType = "open"
 		}
-
-		addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+profileFile, "user=all")
-		wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile {{.SsidString}} in the WiFi networks.", map[string]interface{}{
-			"SsidString": ssidString,
-		})
-
 		// Security of the SSID
 		eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 		if ok {
@@ -284,24 +301,22 @@ func Configure() {
 				// executes the template
 				templateToFile, err := executeTemplate(WIFI_PEAP_TEMPLATE_NAME, WIFI_PEAP_TEMPLATE, elementsToReplaceInTemplate)
 				if err != nil {
-					log.Fatal("Failed executing template: ", err)
-					os.Exit(1)
+					log.Println("Failed executing template: ", err)
+					exit_1()
 				}
 				// creates profile file with the executed template
-				err = createProfileFile(templateToFile)
+				err = createProfileFile(profileTemplated,templateToFile)
 				if err != nil {
-					log.Fatal("Failed creating profile file: ", err)
-					os.Exit(1)
+					log.Println("Failed creating profile file: ", err)
+					exit_1()
 				}
-				// adds the new profile to Windows with netsh command
-				addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 			}
 			if eapType == EAPTYPE_TLS {
 				caFingerprint, err := getCAFingerprint(caFileBinary)
 				if err != nil {
 					os.Remove(caFileBinary)
-					os.Remove("profile.xml")
-					log.Fatal("Unable to get CA fingerprint: ", err)
+					log.Println("Unable to get CA fingerprint: ", err)
+					exit_1()
 				}
 				elementsToReplaceInTemplate = Template{
 					ProfileName:     ssidString,
@@ -314,20 +329,19 @@ func Configure() {
 				os.Remove(caFileBinary)
 				templateToFile, err = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
 				if err != nil {
-					log.Fatal("Failed executing template: ", err)
-					os.Exit(1)
+					log.Println("Failed executing template: ", err)
+					exit_1()
 				}
-				err = createProfileFile(templateToFile)
+				err = createProfileFile(profileTemplated,templateToFile)
 				if err != nil {
-					log.Fatal("Failed creating profile file: ", err)
-					os.Exit(1)
+					log.Println("Failed creating profile file: ", err)
+					exit_1()
 				}
-				addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 			}
 			if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 				// error handling
 				walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
-				log.Fatal("Incorrect EAP type: ", eapType)
+				log.Println("Incorrect EAP type: ", eapType)
 				os.Exit(1)
 			}
 		} else {
@@ -367,15 +381,23 @@ func Configure() {
 			}
 			templateToFile, err = executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
 			if err != nil {
-				log.Fatal("Failed executing template: ", err)
+				log.Println("Failed executing template: ", err)
 				os.Exit(1)
 			}
-			err = createProfileFile(templateToFile)
+			err = createProfileFile(profileTemplated,templateToFile)
 			if err != nil {
-				log.Fatal("Failed creating profile file: ", err)
+				log.Println("Failed creating profile file: ", err)
 				os.Exit(1)
 			}
-			addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+		}
+		// add the new profile to Windows with netsh command
+		addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+profileTemplated, "user=all")
+		wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile {{.SsidString}} in the WiFi networks.", map[string]interface{}{
+			"SsidString": ssidString,
+		})
+		err = addProfileToMachine(profileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+		if err != nil {
+			exit_1()
 		}
 	}
 	if shouldConfigureWired {
@@ -392,60 +414,36 @@ func Configure() {
 				}
 			}
 		}
-		wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profileFile)
 		payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wiredIndex].(map[string]interface{})
 		eapClientConfiguration := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 		eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 		if eapType == EAPTYPE_PEAP {
-			err = createProfileFile(WIRED_PEAP_TEMPLATE)
+			err = createProfileFile(profileTemplated,WIRED_PEAP_TEMPLATE)
 			if err != nil {
-				log.Fatal("Failed creating profile file: ", err)
-				os.Exit(1)
+				log.Println("Failed creating profile file: ", err)
+				exit_1()
 			}
-			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 		}
 		if eapType == EAPTYPE_TLS {
-			err = createProfileFile(WIRED_TLS_TEMPLATE)
+			err = createProfileFile(profileTemplated,WIRED_TLS_TEMPLATE)
 			if err != nil {
-				log.Fatal("Failed creating profile file: ", err)
-				os.Exit(1)
+				log.Println("Failed creating profile file: ", err)
+				exit_1()
 			}
-			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 		}
 		if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 			// error handling
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
-			log.Fatal("Incorrect EAP type: ", eapType)
-			os.Exit(1)
+			log.Println("Incorrect EAP type: ", eapType)
+			exit_1()
+		}
+		// add the new profile to Windows with netsh command
+		wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profileTemplated)
+		err = addProfileToMachine(profileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+		if err != nil {
+			exit_1()
 		}
 	}
-}
-
-// Get mobileconfig file and write to local file
-func writeProfileToLocalFile(filepath string, url string) error {
-	// Create the file
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	// Avoid certificate check
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	cli := &http.Client{Transport: tr}
-	// Get the data
-	resp, err := cli.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // Create, parse and execute templates
@@ -455,8 +453,7 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 	newTemplate, err := newTemplate.Parse(constTemplate)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotParseTemplate"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed parsing: ", err)
+		log.Println("Failed parsing: ", err)
 		return "", err
 	}
 	// executes the template into the open file
@@ -465,30 +462,25 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 	if err != nil {
 		log.Println("Error:  ", err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotExecuteTemplate"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed executing: ", err)
+		log.Println("Failed executing: ", err)
 		return templateBuffer.String(), err
 	}
 	// handles error
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateWLANProfile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed creating WLANProfile: ", err)
+		log.Println("Failed creating WLANProfile: ", err)
 		return templateBuffer.String(), err
 	}
 	return templateBuffer.String(), nil
 }
 
 // Create and write profile file into templateToFile folder
-func createProfileFile(templateToFile string) error {
-	tempPath := os.Getenv("tmp")
+func createProfileFile(profileTemplated string, templateToFile string) error {
 	// create and open file
-	profileFilePath := tempPath + "\\" + "template-out.xml"
-	profileFile, err := os.Create(profileFilePath)
+\	profileFile, err := os.Create(profileTemplated)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateProfileFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed creating profile file: ", err)
+		log.Println("Failed creating profile file: ", err)
 		return err
 	}
 	// close file
@@ -497,12 +489,9 @@ func createProfileFile(templateToFile string) error {
 	_, err = io.Copy(profileFile, strings.NewReader(templateToFile))
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotWriteIntoProfileFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		os.Remove(profileFilePath)
-		log.Fatal("Failed writing template to file: ", err)
+		log.Println("Failed writing template to file: ", err)
 		return err
 	}
-	os.Remove("profile.xml")
 	log.Println("Information:", T("profileCreationSuccess"))
 	return nil
 }
@@ -510,14 +499,12 @@ func createProfileFile(templateToFile string) error {
 // Add wired and wireless profiles to Windows
 func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, SuccessMessage string) error {
 	output, err := cmd.CombinedOutput()
-	os.Remove(profileFile)
 	if err != nil {
 		log.Printf("Failed adding profile: output: %s\n", output, err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), ErrorMessage, walk.MsgBoxOK)
-		log.Fatal("Failed adding profile: ", err, output)
+		log.Println("Failed adding profile: ", err, output)
 		return err
-	} else {
-		walk.MsgBox(windowMsgBox, "Information:", SuccessMessage, walk.MsgBoxOK)
 	}
+	walk.MsgBox(windowMsgBox, "Information:", SuccessMessage, walk.MsgBoxOK)
 	return nil
 }

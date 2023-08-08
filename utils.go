@@ -20,7 +20,7 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 	languageFile, err := os.Create(currentDir + "\\" + languageFileName)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to create the language file, please contact your local support.", walk.MsgBoxOK)
-		log.Fatal("Failed creating language file: ", err)
+		log.Println("Failed creating language file: ", err)
 		return err
 	}
 	// close file
@@ -29,37 +29,71 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 	_, err = io.Copy(languageFile, strings.NewReader(translationLanguage))
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to write into language file, please contact your local support.", walk.MsgBoxOK)
-		log.Fatal("Failed writing language constant to file: ", err)
+		log.Println("Failed writing language constant to file: ", err)
 		return err
 	}
-	log.Print("Language file successfully created.")
+	log.Println("Language file successfully created.")
 	return nil
 }
 
 // Converts base 64 background image to pf_bg.png
-func base64ToPng(BACKGROUND_IMAGE_PF, tempPath string) (error, string) {
+func base64ToPng(BACKGROUND_IMAGE_PF, pngFilePath string) (error, string) {
+	//Decode image from base 64
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(BACKGROUND_IMAGE_PF))
 	decodeBase64ToPng, _, err := image.Decode(reader)
 	if err != nil {
-		log.Fatal("Unable to decode base 64 background image: ", err)
+		log.Println("Unable to decode base 64 background image: ", err)
 	}
 	//Encode from image format to writer
-	pngFilename := "pf_bg.png"
-	pngFilePath := tempPath + "\\" + pngFilename
 	backgroundFile, err := os.Create(pngFilePath)
 	if err != nil {
-		log.Fatal("Unable to open or create background image: ", err)
-		return err, pngFilename
+		log.Println("Unable to open or create background image: ", err)
+		backgroundFile.Close()
+		return err, pngFilePath
 	}
 	err = png.Encode(backgroundFile, decodeBase64ToPng)
 	if err != nil {
-		log.Fatal(err)
-		os.Remove(pngFilePath)
-		return err, pngFilename
+		log.Println(err)
+		backgroundFile.Close()
+		return err, pngFilePath
 	}
-	log.Println("PNG file", pngFilename, "successfully created.")
+	log.Println("PNG file", pngFilePath, "successfully created.")
 	backgroundFile.Close()
-	return nil, pngFilename
+	return nil, pngFilePath
+}
+
+// Get mobileconfig file and write to local file
+func downloadProfileFromPF(filepath string, url string) (error){
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotRetrieveProfileFile"), walk.MsgBoxOK)
+		log.Println("Failed to create profile file: ", err)
+		return err
+	}
+	defer out.Close()
+	// Avoid certificate check
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	cli := &http.Client{Transport: tr}
+	// Get the data
+	resp, err := cli.Get(url)
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotRetrieveProfileFile"), walk.MsgBoxOK)
+		log.Println("Enable to download profile file: ", err)
+		return err
+	}
+	defer resp.Body.Close()
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotRetrieveProfileFile"), walk.MsgBoxOK)
+		log.Println("Enable to copy the content of profile xml: ", err)
+		return err
+	}
+	log.Println("Profile xml file has been downloaded from PF")
+	return nil
 }
 
 // Decode base64 certificate to string
@@ -78,8 +112,7 @@ func createCertTempFile(tempPath, certificate, fileName, fileExtension, alertMes
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateCertTempFile"), walk.MsgBoxOK)
 		// clean up
-		os.Remove("profile.xml")
-		log.Fatal("Failed creating temp file: ", err)
+		log.Println("Failed creating temp file: ", err)
 		return file.Name(), err
 	}
 	certName := file.Name()
@@ -88,22 +121,18 @@ func createCertTempFile(tempPath, certificate, fileName, fileExtension, alertMes
 	if err != nil {
 		// handle error, exit if needed
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotdecodeCertificateFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed decoding certificate: ", err)
-		os.Exit(1)
+		log.Println("Failed decoding certificate: ", err)
 		return certName, err
 	}
 	// write into new file
 	if _, err := file.Write(decodedCertificate); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotWriteIntoTempFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed writing decoded certificate into temp file: ", err)
+		log.Println("Failed writing decoded certificate into temp file: ", err)
 		return certName, err
 	}
 	if err := file.Close(); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), alertMessage, walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		log.Fatal("Failed closing certificate file: ", err)
+		log.Println("Failed closing certificate file: ", err)
 		return certName, err
 	}
 	return certName, nil
