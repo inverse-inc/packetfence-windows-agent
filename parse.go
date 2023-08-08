@@ -49,7 +49,7 @@ var T i18n.TranslateFunc
 
 var windowMsgBox walk.Form
 
-var TEMP_PATH = ""
+var TempPATH
 
 
 type Template struct {
@@ -67,9 +67,9 @@ type Handle uintptr
 func main() {
 	hideConsole()
 	// Set temp directory
-	TEMP_PATH = os.Getenv("tmp")
-	if TEMP_PATH == "" {
-		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTEMP_PATH"), walk.MsgBoxOK)
+	TempPATH = os.Getenv("tmp")
+	if TempPATH == "" {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTempPATH"), walk.MsgBoxOK)
 		log.Fatal("Failed found a temporary directory: ", err)
 	}
 
@@ -99,8 +99,8 @@ func main() {
 	}
 
 	// Main window
-	pngFilePath := TEMP_PATH + "\\pf_bg.png"
-	walk.Resources.SetRootDirPath(TEMP_PATH)
+	pngFilePath := TempPATH + "\\pf_bg.png"
+	walk.Resources.SetRootDirPath(TempPATH)
 	_, pfBg := base64ToPng(BACKGROUND_IMAGE_PF, pngFilePath)
 	var mw1 *walk.MainWindow
 	if _, err := (MainWindow{
@@ -129,16 +129,16 @@ func main() {
 		log.Println("Failed opening main window: ", err)
 		os.Exit(1)
 	}
-	os.Remove(TEMP_PATH + "\\pf_bg.png")
+	os.Remove(TempPATH + "\\pf_bg.png")
 	os.Exit(0)
 }
 
 func clean_files() {
-	pngFilePath := TEMP_PATH + "\\pf_bg.png"
+	pngFilePath := TempPATH + "\\pf_bg.png"
 	os.Remove(pngFilePath)
-	profileTemplated := TEMP_PATH + "\\template-out.xml"
+	profileTemplated := TempPATH + "\\template-out.xml"
 	os.Remove(profileTemplated)
-	profileDownloaded := TEMP_PATH + "\\profile.xml"
+	profileDownloaded := TempPATH + "\\profile.xml"
 	os.Remove(profileDownloaded)
 }
 
@@ -154,8 +154,8 @@ func Configure() {
 	var wiredIndex int
 	var userCertDecode string
 	var caFileBinary string
-	profileDownloaded := TEMP_PATH + "\\profile.xml"
-	profileTemplated := TEMP_PATH + "\\template-out.xml"
+	profileDownloaded := TempPATH + "\\profile.xml"
+	profileTemplated := TempPATH + "\\template-out.xml"
 
 	// Download mobileconfig file
 	err := downloadProfileFromPF(profileDownloaded, PROFILE_URL)
@@ -219,7 +219,7 @@ func Configure() {
 			userAuth := "certificate"
 			fileExtension := ".p12"
 			alertMessage := T("cannotGenerateCertificateFile")
-			userCertDecode, err = createCertTempFile(TEMP_PATH, userCert, userAuth, fileExtension, alertMessage)
+			userCertDecode, err = createCertTempFile(TempPATH, userCert, userAuth, fileExtension, alertMessage)
 			if err != nil {
 				log.Println("Failed creating profile: ", err)
 				os.Remove(userCertDecode)
@@ -238,7 +238,7 @@ func Configure() {
 				caCert := payloadContent["PayloadContent"].(string)
 				fileExtension := ".cer"
 				alertMessage := T("cannotGenerateCAFile")
-				caFileBinary, err = createCertTempFile(TEMP_PATH, caCert, caName, fileExtension, alertMessage)
+				caFileBinary, err = createCertTempFile(TempPATH, caCert, caName, fileExtension, alertMessage)
 				if err != nil {
 					log.Println("Failed creating profile: ", err)
 					os.Remove(caFileBinary)
