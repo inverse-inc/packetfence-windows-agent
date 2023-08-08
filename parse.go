@@ -49,7 +49,7 @@ var T i18n.TranslateFunc
 
 var windowMsgBox walk.Form
 
-var TEMP_PATH
+var TEMP_PATH = ""
 
 
 type Template struct {
@@ -134,7 +134,7 @@ func main() {
 }
 
 func clean_files() {
-	pngFilePath := TEMP_PATH + "\\pf_bg.png")
+	pngFilePath := TEMP_PATH + "\\pf_bg.png"
 	os.Remove(pngFilePath)
 	profileTemplated := TEMP_PATH + "\\template-out.xml"
 	os.Remove(profileTemplated)
@@ -142,8 +142,7 @@ func clean_files() {
 	os.Remove(profileDownloaded)
 }
 
-func exit_1(fatal_message string) {
-	log.Println(fatal_message)
+func exit_1() {
 	clean_files()
 	os.Exit(1)
 }
@@ -161,7 +160,7 @@ func Configure() {
 	// Download mobileconfig file
 	err := downloadProfileFromPF(profileDownloaded, PROFILE_URL)
 	if err != nil {
-		exit_1("", err)
+		exit_1()
 	}
 
 	// Read xml profile, convert to string
