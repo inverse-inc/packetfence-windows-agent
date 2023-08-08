@@ -5,10 +5,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"strings"
 	"syscall"
 
 	"encoding/hex"
@@ -47,6 +45,8 @@ var T i18n.TranslateFunc
 var windowMsgBox walk.Form
 
 var TempPATH string
+var ProfileDownloaded string
+var ProfileTemplated string
 
 
 type Template struct {
@@ -69,6 +69,8 @@ func main() {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTempPATH"), walk.MsgBoxOK)
 		log.Fatal("Failed found a temporary directory")
 	}
+	ProfileDownloaded := TempPATH + "\\profile.xml"
+	ProfileTemplated := TempPATH + "\\template-out.xml"
 
 	log.Println("==================== PacketFence Provisioning Agent ===================")
 
@@ -133,10 +135,8 @@ func main() {
 func clean_files() {
 	pngFilePath := TempPATH + "\\pf_bg.png"
 	os.Remove(pngFilePath)
-	profileTemplated := TempPATH + "\\template-out.xml"
-	os.Remove(profileTemplated)
-	profileDownloaded := TempPATH + "\\profile.xml"
-	os.Remove(profileDownloaded)
+	os.Remove(ProfileTemplated)
+	os.Remove(ProfileDownloaded)
 }
 
 func exit_1() {
@@ -151,17 +151,15 @@ func Configure() {
 	var wiredIndex int
 	var userCertDecode string
 	var caFileBinary string
-	profileDownloaded := TempPATH + "\\profile.xml"
-	profileTemplated := TempPATH + "\\template-out.xml"
 
 	// Download mobileconfig file
-	err := downloadProfileFromPF(profileDownloaded, PROFILE_URL)
+	err := downloadProfileFromPF(ProfileDownloaded, PROFILE_URL)
 	if err != nil {
 		exit_1()
 	}
 
 	// Read xml profile, convert to string
-	data, err := ioutil.ReadFile(profileDownloaded)
+	data, err := ioutil.ReadFile(ProfileDownloaded)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotReadProfileData"), walk.MsgBoxOK)
 		log.Println("Failed reading profile: ", err)
@@ -258,19 +256,20 @@ func Configure() {
 	}
 
 	if shouldConfigureWifi {
-		configureWifi(xmlPlistProfileContent[wifiIndex].(map[string]interface{}))
+		configureWifi(xmlPlistProfileContent[wifiIndex].(map[string]interface{}), caFileBinary)
 	}
 	if shouldConfigureWired {
 		configureWired(xmlPlistProfileContent[wiredIndex].(map[string]interface{}))
 	}
 }
 
-func configureWifi(payloadContent map[string]interface{}){
+func configureWifi(payloadContent map[string]interface{}, caFileBinary string){
 	var elementsToReplaceInTemplate Template
 	var eapType uint64
 	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
 	var wifiKey string
 	var templateToFile string
+
 	ssidString := payloadContent["SSID_STR"].(string)
 	ssidStringToHex := hex.EncodeToString([]byte(ssidString))
 	ssidBroadcast := payloadContent["HIDDEN_NETWORK"].(bool)
@@ -307,7 +306,7 @@ func configureWifi(payloadContent map[string]interface{}){
 				exit_1()
 			}
 			// creates profile file with the executed template
-			err = createProfileFile(profileTemplated,templateToFile)
+			err = createProfileFile(ProfileTemplated,templateToFile)
 			if err != nil {
 				log.Println("Failed creating profile file: ", err)
 				exit_1()
@@ -334,7 +333,7 @@ func configureWifi(payloadContent map[string]interface{}){
 				log.Println("Failed executing template: ", err)
 				exit_1()
 			}
-			err = createProfileFile(profileTemplated,templateToFile)
+			err = createProfileFile(ProfileTemplated,templateToFile)
 			if err != nil {
 				log.Println("Failed creating profile file: ", err)
 				exit_1()
@@ -381,23 +380,23 @@ func configureWifi(payloadContent map[string]interface{}){
 				Encryption:      "none",
 			}
 		}
-		templateToFile, err = executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
+		templateToFile, err := executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
 		if err != nil {
 			log.Println("Failed executing template: ", err)
 			os.Exit(1)
 		}
-		err = createProfileFile(profileTemplated,templateToFile)
+		err = createProfileFile(ProfileTemplated,templateToFile)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			os.Exit(1)
 		}
 	}
 	// add the new profile to Windows with netsh command
-	addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+profileTemplated, "user=all")
+	addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+ProfileTemplated, "user=all")
 	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile {{.SsidString}} in the WiFi networks.", map[string]interface{}{
 		"SsidString": ssidString,
 	})
-	err = addProfileToMachine(profileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+	err = addProfileToMachine(ProfileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 	if err != nil {
 		exit_1()
 	}
@@ -425,14 +424,14 @@ func configureWired(payloadContent map[string]interface{}) {
 	eapClientConfiguration := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 	eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 	if eapType == EAPTYPE_PEAP {
-		err = createProfileFile(profileTemplated,WIRED_PEAP_TEMPLATE)
+		err = createProfileFile(ProfileTemplated,WIRED_PEAP_TEMPLATE)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			exit_1()
 		}
 	}
 	if eapType == EAPTYPE_TLS {
-		err = createProfileFile(profileTemplated,WIRED_TLS_TEMPLATE)
+		err = createProfileFile(ProfileTemplated,WIRED_TLS_TEMPLATE)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			exit_1()
@@ -445,8 +444,8 @@ func configureWired(payloadContent map[string]interface{}) {
 		exit_1()
 	}
 	// add the new profile to Windows with netsh command
-	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profileTemplated)
-	err = addProfileToMachine(profileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+ProfileTemplated)
+	err = addProfileToMachine(ProfileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 	if err != nil {
 		exit_1()
 	}
