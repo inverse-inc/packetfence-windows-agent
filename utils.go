@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"image"
 	"io"
 	"log"
