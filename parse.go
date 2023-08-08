@@ -49,7 +49,7 @@ var T i18n.TranslateFunc
 
 var windowMsgBox walk.Form
 
-var TempPATH
+var TempPATH string
 
 
 type Template struct {
