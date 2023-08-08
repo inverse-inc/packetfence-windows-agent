@@ -47,6 +47,7 @@ var windowMsgBox walk.Form
 var TempPATH string
 var ProfileDownloaded string
 var ProfileTemplated string
+var PngFilePath string
 
 
 type Template struct {
@@ -96,9 +97,9 @@ func main() {
 	}
 
 	// Main window
-	pngFilePath := TempPATH + "\\pf_bg.png"
+	PngFilePath := TempPATH + "\\pf_bg.png"
 	walk.Resources.SetRootDirPath(TempPATH)
-	_, pfBg := base64ToPng(BACKGROUND_IMAGE_PF, pngFilePath)
+	_, pfBg := base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath)
 	var mw1 *walk.MainWindow
 	if _, err := (MainWindow{
 		AssignTo:   &mw1,
@@ -131,10 +132,15 @@ func main() {
 }
 
 func clean_files() {
-	pngFilePath := TempPATH + "\\pf_bg.png"
-	os.Remove(pngFilePath)
-	os.Remove(ProfileTemplated)
-	os.Remove(ProfileDownloaded)
+	if PngFilePath != nil {
+		os.Remove(PngFilePath)
+	}
+	if ProfileDownloaded != nil {
+		os.Remove(ProfileDownloaded)
+	}
+	if ProfileTemplated != nil {
+		os.Remove(ProfileTemplated)
+	}
 }
 
 func exit_1() {
@@ -151,7 +157,6 @@ func Configure() {
 	var caFileBinary string
 
 	ProfileDownloaded := TempPATH + "\\profile.xml"
-	ProfileTemplated := TempPATH + "\\template-out.xml"
 
 	// Download mobileconfig file
 	err := downloadProfileFromPF(ProfileDownloaded, PROFILE_URL)
@@ -270,6 +275,8 @@ func configureWifi(payloadContent map[string]interface{}, caFileBinary string){
 	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
 	var wifiKey string
 	var templateToFile string
+
+	ProfileTemplated := TempPATH + "\\template-out.xml"
 
 	ssidString := payloadContent["SSID_STR"].(string)
 	ssidStringToHex := hex.EncodeToString([]byte(ssidString))
@@ -408,6 +415,8 @@ func configureWired(payloadContent map[string]interface{}) {
 	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
 	var eapType uint64
 
+	ProfileTemplated := TempPATH + "\\template-out.xml"
+
 	dot3svc := exec.Command("net", "start", "dot3svc")
 	dot3svc.Start()
 	if err := dot3svc.Wait(); err != nil {
@@ -425,14 +434,14 @@ func configureWired(payloadContent map[string]interface{}) {
 	eapClientConfiguration := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 	eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 	if eapType == EAPTYPE_PEAP {
-		err = createProfileFile(ProfileTemplated,WIRED_PEAP_TEMPLATE)
+		err := createProfileFile(ProfileTemplated,WIRED_PEAP_TEMPLATE)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			exit_1()
 		}
 	}
 	if eapType == EAPTYPE_TLS {
-		err = createProfileFile(ProfileTemplated,WIRED_TLS_TEMPLATE)
+		err := createProfileFile(ProfileTemplated,WIRED_TLS_TEMPLATE)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			exit_1()
@@ -446,7 +455,7 @@ func configureWired(payloadContent map[string]interface{}) {
 	}
 	// add the new profile to Windows with netsh command
 	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+ProfileTemplated)
-	err = addProfileToMachine(ProfileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+	err := addProfileToMachine(ProfileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 	if err != nil {
 		exit_1()
 	}
