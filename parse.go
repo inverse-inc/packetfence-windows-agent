@@ -398,19 +398,19 @@ func Configure() {
 		eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 		if eapType == EAPTYPE_PEAP {
 			err = createProfileFile(WIRED_PEAP_TEMPLATE)
-			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 			if err != nil {
 				log.Fatal("Failed creating profile file: ", err)
 				os.Exit(1)
 			}
+			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 		}
 		if eapType == EAPTYPE_TLS {
 			err = createProfileFile(WIRED_TLS_TEMPLATE)
-			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 			if err != nil {
 				log.Fatal("Failed creating profile file: ", err)
 				os.Exit(1)
 			}
+			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 		}
 		if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 			// error handling
