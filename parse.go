@@ -149,18 +149,12 @@ func exit_1(fatal_message string) {
 }
 
 func Configure() {
-	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
-	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
-	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
 	var xmlPlistProfile map[string]interface{}
 	var eapType uint64
-	var userCertDecode string
-	var templateToFile string
-	var elementsToReplaceInTemplate Template
-	var wifiKey string
-	var caFileBinary string
 	var wifiIndex int
 	var wiredIndex int
+	var userCertDecode string
+	var caFileBinary string
 	profileDownloaded := TEMP_PATH + "\\profile.xml"
 	profileTemplated := TEMP_PATH + "\\template-out.xml"
 
@@ -194,10 +188,11 @@ func Configure() {
 	shouldConfigureWired := false
 
 	// Get PayloadContent length
-	lengthPayloadContent := len(xmlPlistProfile["PayloadContent"].([]interface{}))
+	xmlPlistProfileContent := xmlPlistProfile["PayloadContent"].([]interface{})
+	lengthPayloadContent := len(xmlPlistProfileContent)
 
 	for i := 0; i < lengthPayloadContent; i++ {
-		payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[i].(map[string]interface{})
+		payloadContent := xmlPlistProfileContent[i].(map[string]interface{})
 		payloadType := payloadContent["PayloadType"].(string)
 
 		switch payloadType {
@@ -267,165 +262,82 @@ func Configure() {
 	}
 
 	if shouldConfigureWifi {
-		// Get SSID information
-		payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wifiIndex].(map[string]interface{})
-		ssidString := payloadContent["SSID_STR"].(string)
-		ssidStringToHex := hex.EncodeToString([]byte(ssidString))
-		ssidBroadcast := payloadContent["HIDDEN_NETWORK"].(bool)
-		securityType := payloadContent["EncryptionType"].(string)
-		if securityType == "None" {
-			securityType = "open"
-		}
-		// Security of the SSID
-		eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
-		if ok {
-			eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
-			userAuth, ok := eapClientConfiguration["UserName"].(string)
-			if ok {
-				if userAuth == "" {
-					userAuth = "certificate"
-				}
-			} else {
-				userAuth = "certificate"
-			}
-			eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
-			if eapType == EAPTYPE_PEAP {
-				// Search specific fields in wintemplate and replace them
-				elementsToReplaceInTemplate = Template{
-					ProfileName:     ssidString,
-					SsidStringToHex: ssidStringToHex,
-					IsSSIDBroadcast: ssidBroadcast,
-					SecAuth:         "WPA2",
-					Encryption:      "AES",
-				}
-				// executes the template
-				templateToFile, err := executeTemplate(WIFI_PEAP_TEMPLATE_NAME, WIFI_PEAP_TEMPLATE, elementsToReplaceInTemplate)
-				if err != nil {
-					log.Println("Failed executing template: ", err)
-					exit_1()
-				}
-				// creates profile file with the executed template
-				err = createProfileFile(profileTemplated,templateToFile)
-				if err != nil {
-					log.Println("Failed creating profile file: ", err)
-					exit_1()
-				}
-			}
-			if eapType == EAPTYPE_TLS {
-				caFingerprint, err := getCAFingerprint(caFileBinary)
-				if err != nil {
-					os.Remove(caFileBinary)
-					log.Println("Unable to get CA fingerprint: ", err)
-					exit_1()
-				}
-				elementsToReplaceInTemplate = Template{
-					ProfileName:     ssidString,
-					SsidStringToHex: ssidStringToHex,
-					IsSSIDBroadcast: ssidBroadcast,
-					SecAuth:         "WPA2",
-					Encryption:      "AES",
-					CaToTrust:       caFingerprint,
-				}
-				os.Remove(caFileBinary)
-				templateToFile, err = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
-				if err != nil {
-					log.Println("Failed executing template: ", err)
-					exit_1()
-				}
-				err = createProfileFile(profileTemplated,templateToFile)
-				if err != nil {
-					log.Println("Failed creating profile file: ", err)
-					exit_1()
-				}
-			}
-			if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
-				// error handling
-				walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
-				log.Println("Incorrect EAP type: ", eapType)
-				os.Exit(1)
-			}
-		} else {
-			wifiKey = payloadContent["Password"].(string)
-			log.Println("Security type: ", securityType)
-			switch securityType {
-			case "WEP":
-				elementsToReplaceInTemplate = Template{
-					ProfileName:     ssidString,
-					SsidStringToHex: ssidStringToHex,
-					IsSSIDBroadcast: ssidBroadcast,
-					SecAuth:         "open",
-					OpenPasscode:    "passPhrase",
-					WifiKey:         wifiKey,
-					Encryption:      "WEP",
-				}
-			case "WPA":
-				elementsToReplaceInTemplate = Template{
-					ProfileName:     ssidString,
-					SsidStringToHex: ssidStringToHex,
-					IsSSIDBroadcast: ssidBroadcast,
-					SecAuth:         "WPA2PSK",
-					OpenPasscode:    "passPhrase",
-					WifiKey:         wifiKey,
-					Encryption:      "AES",
-				}
-			default:
-				elementsToReplaceInTemplate = Template{
-					ProfileName:     ssidString,
-					SsidStringToHex: ssidStringToHex,
-					IsSSIDBroadcast: ssidBroadcast,
-					SecAuth:         "open",
-					OpenPasscode:    "passPhrase",
-					WifiKey:         wifiKey,
-					Encryption:      "none",
-				}
-			}
-			templateToFile, err = executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
-			if err != nil {
-				log.Println("Failed executing template: ", err)
-				os.Exit(1)
-			}
-			err = createProfileFile(profileTemplated,templateToFile)
-			if err != nil {
-				log.Println("Failed creating profile file: ", err)
-				os.Exit(1)
-			}
-		}
-		// add the new profile to Windows with netsh command
-		addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+profileTemplated, "user=all")
-		wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile {{.SsidString}} in the WiFi networks.", map[string]interface{}{
-			"SsidString": ssidString,
-		})
-		err = addProfileToMachine(profileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
-		if err != nil {
-			exit_1()
-		}
+		configureWifi(xmlPlistProfileContent[wifiIndex].(map[string]interface{}))
 	}
 	if shouldConfigureWired {
-		dot3svc := exec.Command("net", "start", "dot3svc")
-		dot3svc.Start()
-		if err := dot3svc.Wait(); err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-					exitStatus := status.ExitStatus()
-					if exitStatus != 2 {
-						walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("dot3svcFail"), walk.MsgBoxOK)
-						log.Print("The Wired Autoconfig service could not be started.", err)
-					}
-				}
+		configureWired(xmlPlistProfileContent[wiredIndex].(map[string]interface{}))
+	}
+}
+
+func configureWifi(payloadContent map[string]interface{}){
+	var elementsToReplaceInTemplate Template
+	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
+	var wifiKey string
+	var templateToFile string
+	ssidString := payloadContent["SSID_STR"].(string)
+	ssidStringToHex := hex.EncodeToString([]byte(ssidString))
+	ssidBroadcast := payloadContent["HIDDEN_NETWORK"].(bool)
+	securityType := payloadContent["EncryptionType"].(string)
+	if securityType == "None" {
+		securityType = "open"
+	}
+	// Security of the SSID
+	eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
+	if ok {
+		eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
+		userAuth, ok := eapClientConfiguration["UserName"].(string)
+		if ok {
+			if userAuth == "" {
+				userAuth = "certificate"
 			}
+		} else {
+			userAuth = "certificate"
 		}
-		payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wiredIndex].(map[string]interface{})
-		eapClientConfiguration := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 		eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 		if eapType == EAPTYPE_PEAP {
-			err = createProfileFile(profileTemplated,WIRED_PEAP_TEMPLATE)
+			// Search specific fields in wintemplate and replace them
+			elementsToReplaceInTemplate = Template{
+				ProfileName:     ssidString,
+				SsidStringToHex: ssidStringToHex,
+				IsSSIDBroadcast: ssidBroadcast,
+				SecAuth:         "WPA2",
+				Encryption:      "AES",
+			}
+			// executes the template
+			templateToFile, err := executeTemplate(WIFI_PEAP_TEMPLATE_NAME, WIFI_PEAP_TEMPLATE, elementsToReplaceInTemplate)
+			if err != nil {
+				log.Println("Failed executing template: ", err)
+				exit_1()
+			}
+			// creates profile file with the executed template
+			err = createProfileFile(profileTemplated,templateToFile)
 			if err != nil {
 				log.Println("Failed creating profile file: ", err)
 				exit_1()
 			}
 		}
 		if eapType == EAPTYPE_TLS {
-			err = createProfileFile(profileTemplated,WIRED_TLS_TEMPLATE)
+			caFingerprint, err := getCAFingerprint(caFileBinary)
+			if err != nil {
+				os.Remove(caFileBinary)
+				log.Println("Unable to get CA fingerprint: ", err)
+				exit_1()
+			}
+			elementsToReplaceInTemplate = Template{
+				ProfileName:     ssidString,
+				SsidStringToHex: ssidStringToHex,
+				IsSSIDBroadcast: ssidBroadcast,
+				SecAuth:         "WPA2",
+				Encryption:      "AES",
+				CaToTrust:       caFingerprint,
+			}
+			os.Remove(caFileBinary)
+			templateToFile, err = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
+			if err != nil {
+				log.Println("Failed executing template: ", err)
+				exit_1()
+			}
+			err = createProfileFile(profileTemplated,templateToFile)
 			if err != nil {
 				log.Println("Failed creating profile file: ", err)
 				exit_1()
@@ -435,13 +347,109 @@ func Configure() {
 			// error handling
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
 			log.Println("Incorrect EAP type: ", eapType)
-			exit_1()
+			os.Exit(1)
 		}
-		// add the new profile to Windows with netsh command
-		wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profileTemplated)
-		err = addProfileToMachine(profileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+	} else {
+		wifiKey = payloadContent["Password"].(string)
+		log.Println("Security type: ", securityType)
+		switch securityType {
+		case "WEP":
+			elementsToReplaceInTemplate = Template{
+				ProfileName:     ssidString,
+				SsidStringToHex: ssidStringToHex,
+				IsSSIDBroadcast: ssidBroadcast,
+				SecAuth:         "open",
+				OpenPasscode:    "passPhrase",
+				WifiKey:         wifiKey,
+				Encryption:      "WEP",
+			}
+		case "WPA":
+			elementsToReplaceInTemplate = Template{
+				ProfileName:     ssidString,
+				SsidStringToHex: ssidStringToHex,
+				IsSSIDBroadcast: ssidBroadcast,
+				SecAuth:         "WPA2PSK",
+				OpenPasscode:    "passPhrase",
+				WifiKey:         wifiKey,
+				Encryption:      "AES",
+			}
+		default:
+			elementsToReplaceInTemplate = Template{
+				ProfileName:     ssidString,
+				SsidStringToHex: ssidStringToHex,
+				IsSSIDBroadcast: ssidBroadcast,
+				SecAuth:         "open",
+				OpenPasscode:    "passPhrase",
+				WifiKey:         wifiKey,
+				Encryption:      "none",
+			}
+		}
+		templateToFile, err = executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
 		if err != nil {
+			log.Println("Failed executing template: ", err)
+			os.Exit(1)
+		}
+		err = createProfileFile(profileTemplated,templateToFile)
+		if err != nil {
+			log.Println("Failed creating profile file: ", err)
+			os.Exit(1)
+		}
+	}
+	// add the new profile to Windows with netsh command
+	addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+profileTemplated, "user=all")
+	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile {{.SsidString}} in the WiFi networks.", map[string]interface{}{
+		"SsidString": ssidString,
+	})
+	err = addProfileToMachine(profileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+	if err != nil {
+		exit_1()
+	}
+}
+
+func configureWired(payloadContent map[string]interface{}) {
+	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
+	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
+
+	dot3svc := exec.Command("net", "start", "dot3svc")
+	dot3svc.Start()
+	if err := dot3svc.Wait(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+				exitStatus := status.ExitStatus()
+				if exitStatus != 2 {
+					walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("dot3svcFail"), walk.MsgBoxOK)
+					log.Print("The Wired Autoconfig service could not be started.", err)
+				}
+			}
+		}
+	}
+
+	eapClientConfiguration := payloadContent["EAPClientConfiguration"].(map[string]interface{})
+	eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
+	if eapType == EAPTYPE_PEAP {
+		err = createProfileFile(profileTemplated,WIRED_PEAP_TEMPLATE)
+		if err != nil {
+			log.Println("Failed creating profile file: ", err)
 			exit_1()
 		}
+	}
+	if eapType == EAPTYPE_TLS {
+		err = createProfileFile(profileTemplated,WIRED_TLS_TEMPLATE)
+		if err != nil {
+			log.Println("Failed creating profile file: ", err)
+			exit_1()
+		}
+	}
+	if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
+		// error handling
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
+		log.Println("Incorrect EAP type: ", eapType)
+		exit_1()
+	}
+	// add the new profile to Windows with netsh command
+	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profileTemplated)
+	err = addProfileToMachine(profileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+	if err != nil {
+		exit_1()
 	}
 }
