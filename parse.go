@@ -510,15 +510,14 @@ func createProfileFile(templateToFile string) error {
 // Add wired and wireless profiles to Windows
 func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, SuccessMessage string) error {
 	output, err := cmd.CombinedOutput()
+	os.Remove(profileFile)
 	if err != nil {
 		log.Printf("Failed adding profile: output: %s\n", output, err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), ErrorMessage, walk.MsgBoxOK)
-		os.Remove(profileFile)
 		log.Fatal("Failed adding profile: ", err, output)
 		return err
 	} else {
 		walk.MsgBox(windowMsgBox, "Information:", SuccessMessage, walk.MsgBoxOK)
-		os.Remove(profileFile)
 	}
 	return nil
 }
