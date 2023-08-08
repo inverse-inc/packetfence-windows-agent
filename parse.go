@@ -132,13 +132,13 @@ func main() {
 }
 
 func clean_files() {
-	if PngFilePath != nil {
+	if PngFilePath != "" {
 		os.Remove(PngFilePath)
 	}
-	if ProfileDownloaded != nil {
+	if ProfileDownloaded != "" {
 		os.Remove(ProfileDownloaded)
 	}
-	if ProfileTemplated != nil {
+	if ProfileTemplated != "" {
 		os.Remove(ProfileTemplated)
 	}
 }
