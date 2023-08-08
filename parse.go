@@ -69,8 +69,6 @@ func main() {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTempPATH"), walk.MsgBoxOK)
 		log.Fatal("Failed found a temporary directory")
 	}
-	ProfileDownloaded := TempPATH + "\\profile.xml"
-	ProfileTemplated := TempPATH + "\\template-out.xml"
 
 	log.Println("==================== PacketFence Provisioning Agent ===================")
 
@@ -151,6 +149,9 @@ func Configure() {
 	var wiredIndex int
 	var userCertDecode string
 	var caFileBinary string
+
+	ProfileDownloaded := TempPATH + "\\profile.xml"
+	ProfileTemplated := TempPATH + "\\template-out.xml"
 
 	// Download mobileconfig file
 	err := downloadProfileFromPF(ProfileDownloaded, PROFILE_URL)
@@ -396,7 +397,7 @@ func configureWifi(payloadContent map[string]interface{}, caFileBinary string){
 	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile {{.SsidString}} in the WiFi networks.", map[string]interface{}{
 		"SsidString": ssidString,
 	})
-	err = addProfileToMachine(ProfileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+	err := addProfileToMachine(ProfileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 	if err != nil {
 		exit_1()
 	}
