@@ -113,9 +113,9 @@ const WIFI_TLS_TEMPLATE = `<WLANProfile xmlns="http://www.microsoft.com/networki
                     <TrustedRootCA>{{.CaToTrust}}</TrustedRootCA>
                   </ServerValidation>
                   <DifferentUsername>false</DifferentUsername>
-                  <PerformServerValidation xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">true</PerformServerValidation>
+                  <PerformServerValidation xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">false</PerformServerValidation>
                   <AcceptServerName xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">false</AcceptServerName>
-                  </EapType>
+                </EapType>
               </Eap>
             </Config>
           </EapHostConfig>
@@ -217,6 +217,7 @@ const WIRED_PEAP_TEMPLATE = `<LANProfile xmlns="http://www.microsoft.com/network
                    <msPeap:DisableUserPromptForServerValidation>false</msPeap:DisableUserPromptForServerValidation>
                    <msPeap:TrustedRootCA/>
                  </msPeap:ServerValidation>
+                 <msPeap:PerformServerValidation>false</msPeap:PerformServerValidation>
                  <msPeap:FastReconnect>true</msPeap:FastReconnect>
                  <msPeap:InnerEapOptional>0</msPeap:InnerEapOptional>
                  <baseEap:Eap>

@@ -27,7 +27,7 @@ import (
 )
 
 const PROGRAM_NAME = "PacketFence Provisioning Agent"
-const VERSION = "1.0.1"
+const VERSION = "1.0.2"
 
 const CERTUTIL_PROGRAM_PATH = "C:\\Windows\\System32\\certutil.exe"
 const WIFI_PEAP_TEMPLATE_NAME = "wireless PEAP template"
@@ -173,7 +173,6 @@ func Configure() {
 	// Get data from the mobileconfig file
 	shouldConfigureWifi := false
 	shouldConfigureWired := false
-	sum := 0
 
 	// Get PayloadContent length
 	lengthPayloadContent := len(xmlPlistProfile["PayloadContent"].([]interface{}))
@@ -208,9 +207,13 @@ func Configure() {
 			fileExtension := ".p12"
 			alertMessage := T("cannotGenerateCertificateFile")
 			userCertDecode, err = createCertTempFile(tempPath, userCert, userAuth, fileExtension, alertMessage)
-			err = addCertToMachine(userCertDecode, CERTUTIL_PROGRAM_PATH)
 			if err != nil {
 				log.Fatal("Failed creating profile: ", err)
+				os.Exit(1)
+			}
+			err = addCertToMachine(userCertDecode, CERTUTIL_PROGRAM_PATH)
+			if err != nil {
+				log.Fatal("Failed adding Cert: ", err)
 				os.Exit(1)
 			}
 		// Certificate of Authority configuration
@@ -221,9 +224,13 @@ func Configure() {
 				fileExtension := ".cer"
 				alertMessage := T("cannotGenerateCAFile")
 				caFileBinary, err = createCertTempFile(tempPath, caCert, caName, fileExtension, alertMessage)
-				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
 				if err != nil {
 					log.Fatal("Failed creating profile: ", err)
+					os.Exit(1)
+				}
+				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
+				if err != nil {
+					log.Fatal("Failed adding CA: ", err)
 					os.Exit(1)
 				}
 			}
@@ -234,7 +241,6 @@ func Configure() {
 			log.Fatal("Unexpected PayloadType: ", payloadType)
 			os.Exit(1)
 		}
-		sum += i
 	}
 
 	if shouldConfigureWifi {
@@ -392,19 +398,19 @@ func Configure() {
 		eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 		if eapType == EAPTYPE_PEAP {
 			err = createProfileFile(WIRED_PEAP_TEMPLATE)
-			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 			if err != nil {
 				log.Fatal("Failed creating profile file: ", err)
 				os.Exit(1)
 			}
+			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 		}
 		if eapType == EAPTYPE_TLS {
 			err = createProfileFile(WIRED_TLS_TEMPLATE)
-			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 			if err != nil {
 				log.Fatal("Failed creating profile file: ", err)
 				os.Exit(1)
 			}
+			addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 		}
 		if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 			// error handling
@@ -504,15 +510,14 @@ func createProfileFile(templateToFile string) error {
 // Add wired and wireless profiles to Windows
 func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, SuccessMessage string) error {
 	output, err := cmd.CombinedOutput()
+	os.Remove(profileFile)
 	if err != nil {
 		log.Printf("Failed adding profile: output: %s\n", output, err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), ErrorMessage, walk.MsgBoxOK)
-		os.Remove(profileFile)
 		log.Fatal("Failed adding profile: ", err, output)
 		return err
 	} else {
 		walk.MsgBox(windowMsgBox, "Information:", SuccessMessage, walk.MsgBoxOK)
-		os.Remove(profileFile)
 	}
 	return nil
 }
