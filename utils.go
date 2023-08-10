@@ -1,11 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"os/exec"
 	"image"
 	"io"
 	"log"
 	"os"
 	"strings"
+
+	"crypto/tls"
+	"net/http"
+	"text/template"
 
 	"encoding/base64"
 	"image/png"
@@ -69,6 +75,107 @@ func decodeCertificate(certificate string) ([]byte, error) {
 		return nil, err
 	}
 	return b64Cert, nil
+}
+
+// Get mobileconfig file and write to local file
+func writeProfileToLocalFile(filepath string, url string) error {
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	// Avoid certificate check
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	cli := &http.Client{Transport: tr}
+	// Get the data
+	resp, err := cli.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Create, parse and execute templates
+func executeTemplate(nameTemplate, constTemplate string, templateToApply Template) (string, error) {
+	newTemplate := template.New(nameTemplate)
+	// parses template
+	newTemplate, err := newTemplate.Parse(constTemplate)
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotParseTemplate"), walk.MsgBoxOK)
+		os.Remove("profile.xml")
+		log.Fatal("Failed parsing: ", err)
+		return "", err
+	}
+	// executes the template into the open file
+	var templateBuffer bytes.Buffer
+	err = newTemplate.Execute(&templateBuffer, templateToApply)
+	if err != nil {
+		log.Println("Error:  ", err)
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotExecuteTemplate"), walk.MsgBoxOK)
+		os.Remove("profile.xml")
+		log.Fatal("Failed executing: ", err)
+		return templateBuffer.String(), err
+	}
+	// handles error
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateWLANProfile"), walk.MsgBoxOK)
+		os.Remove("profile.xml")
+		log.Fatal("Failed creating WLANProfile: ", err)
+		return templateBuffer.String(), err
+	}
+	return templateBuffer.String(), nil
+}
+
+// Create and write profile file into templateToFile folder
+func createProfileFile(templateToFile string) error {
+	tempPath := os.Getenv("tmp")
+	// create and open file
+	profileFilePath := tempPath + "\\" + "template-out.xml"
+	profileFile, err := os.Create(profileFilePath)
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateProfileFile"), walk.MsgBoxOK)
+		os.Remove("profile.xml")
+		log.Fatal("Failed creating profile file: ", err)
+		return err
+	}
+	// close file
+	defer profileFile.Close()
+	// write the template into the new file
+	_, err = io.Copy(profileFile, strings.NewReader(templateToFile))
+	if err != nil {
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotWriteIntoProfileFile"), walk.MsgBoxOK)
+		os.Remove("profile.xml")
+		os.Remove(profileFilePath)
+		log.Fatal("Failed writing template to file: ", err)
+		return err
+	}
+	os.Remove("profile.xml")
+	log.Println("Information:", T("profileCreationSuccess"))
+	return nil
+}
+
+// Add wired and wireless profiles to Windows
+func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, SuccessMessage string) error {
+	output, err := cmd.CombinedOutput()
+	os.Remove(profileFile)
+	if err != nil {
+		log.Printf("Failed adding profile: output: %s\n", output, err)
+		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), ErrorMessage, walk.MsgBoxOK)
+		log.Fatal("Failed adding profile: ", err, output)
+		return err
+	} else {
+		walk.MsgBox(windowMsgBox, "Information:", SuccessMessage, walk.MsgBoxOK)
+	}
+	return nil
 }
 
 // Create certificate templateToFile files
