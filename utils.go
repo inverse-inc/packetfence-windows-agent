@@ -111,7 +111,6 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 	newTemplate, err := newTemplate.Parse(constTemplate)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotParseTemplate"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed parsing: ", err)
 		return "", err
 	}
@@ -119,16 +118,13 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 	var templateBuffer bytes.Buffer
 	err = newTemplate.Execute(&templateBuffer, templateToApply)
 	if err != nil {
-		log.Println("Error:  ", err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotExecuteTemplate"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed executing: ", err)
 		return templateBuffer.String(), err
 	}
 	// handles error
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateWLANProfile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed creating WLANProfile: ", err)
 		return templateBuffer.String(), err
 	}
@@ -143,7 +139,6 @@ func createProfileFile(templateToFile string) error {
 	profileFile, err := os.Create(profileFilePath)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateProfileFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed creating profile file: ", err)
 		return err
 	}
@@ -153,12 +148,9 @@ func createProfileFile(templateToFile string) error {
 	_, err = io.Copy(profileFile, strings.NewReader(templateToFile))
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotWriteIntoProfileFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
-		os.Remove(profileFilePath)
 		log.Println("Failed writing template to file: ", err)
 		return err
 	}
-	os.Remove("profile.xml")
 	log.Println("Information:", T("profileCreationSuccess"))
 	return nil
 }
@@ -166,7 +158,6 @@ func createProfileFile(templateToFile string) error {
 // Add wired and wireless profiles to Windows
 func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, SuccessMessage string) error {
 	output, err := cmd.CombinedOutput()
-	os.Remove(profileFile)
 	if err != nil {
 		log.Printf("Failed adding profile: output: %s\n", output, err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), ErrorMessage, walk.MsgBoxOK)
@@ -184,8 +175,6 @@ func createCertTempFile(tempPath, certificate, fileName, fileExtension, alertMes
 	file, err := tempfile.TempFile(tempPath, fileName, fileExtension)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateCertTempFile"), walk.MsgBoxOK)
-		// clean up
-		os.Remove("profile.xml")
 		log.Println("Failed creating temp file: ", err)
 		return file.Name(), err
 	}
@@ -195,20 +184,17 @@ func createCertTempFile(tempPath, certificate, fileName, fileExtension, alertMes
 	if err != nil {
 		// handle error, exit if needed
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotdecodeCertificateFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed decoding certificate: ", err)
 		return certName, err
 	}
 	// write into new file
 	if _, err := file.Write(decodedCertificate); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotWriteIntoTempFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed writing decoded certificate into temp file: ", err)
 		return certName, err
 	}
 	if err := file.Close(); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), alertMessage, walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed closing certificate file: ", err)
 		return certName, err
 	}

@@ -48,6 +48,7 @@ var TempPATH string
 var ProfileDownloaded string
 var ProfileTemplated string
 var PngFilePath string
+var CaFileBinary string
 
 type Template struct {
 	ProfileName     string // replace by SSIDString
@@ -62,6 +63,9 @@ type Template struct {
 type Handle uintptr
 
 func clean_files() {
+	if CaFileBinary != "" {
+		os.Remove(CaFileBinary)
+	}
 	if PngFilePath != "" {
 		os.Remove(PngFilePath)
 	}
@@ -75,7 +79,7 @@ func clean_files() {
 
 func exit_1() {
 	clean_files()
-	exit_1()
+	os.Exit(1)
 }
 
 func main() {
@@ -94,6 +98,7 @@ func main() {
 	currentWorkingDirectory, err := os.Executable()
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to get current working directory, please contact your local support.", walk.MsgBoxOK)
+		exit_1()
 	}
 	stableCurrentWorkingDirectory := filepath.Dir(currentWorkingDirectory)
 
@@ -143,6 +148,7 @@ func main() {
 		os.Remove(TempPATH + "\\" + "pf_bg.png")
 		exit_1()
 	}
+	clean_files()
 	os.Exit(0)
 }
 
@@ -150,12 +156,12 @@ func Configure() {
 	var xmlPlistProfile map[string]interface{}
 	var eapType uint64
 	var userCertDecode string
-	var caFileBinary string
 	var wifiIndex int
 	var wiredIndex int
 
+	ProfileDownloaded = TempPATH + "\\profile.xml"
 	// Download mobileconfig file
-	err := writeProfileToLocalFile("profile.xml", PROFILE_URL)
+	err := writeProfileToLocalFile(ProfileDownloaded, PROFILE_URL)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotRetrieveProfileFile"), walk.MsgBoxOK)
 		log.Println("Failed loading profile: ", err)
@@ -163,10 +169,9 @@ func Configure() {
 	}
 
 	// Read xml profile, convert to string
-	data, err := ioutil.ReadFile("profile.xml")
+	data, err := ioutil.ReadFile(ProfileDownloaded)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotReadProfileData"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed reading profile: ", err)
 		exit_1()
 	}
@@ -178,7 +183,6 @@ func Configure() {
 	err = decoder.Decode(&xmlPlistProfile)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotDecodeProfileFile"), walk.MsgBoxOK)
-		os.Remove("profile.xml")
 		log.Println("Failed decoding profile: ", err)
 		exit_1()
 	}
@@ -236,12 +240,12 @@ func Configure() {
 				caCert := payloadContent["PayloadContent"].(string)
 				fileExtension := ".cer"
 				alertMessage := T("cannotGenerateCAFile")
-				caFileBinary, err = createCertTempFile(TempPATH, caCert, caName, fileExtension, alertMessage)
+				CaFileBinary, err = createCertTempFile(TempPATH, caCert, caName, fileExtension, alertMessage)
 				if err != nil {
 					log.Println("Failed creating profile: ", err)
 					exit_1()
 				}
-				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
+				err = addCAToMachine(CaFileBinary, CERTUTIL_PROGRAM_PATH)
 				if err != nil {
 					log.Println("Failed adding CA: ", err)
 					exit_1()
@@ -257,14 +261,14 @@ func Configure() {
 	}
 
 	if shouldConfigureWifi {
-		configureWifi(xmlPlistProfile,wifiIndex,eapType,caFileBinary)
+		configureWifi(xmlPlistProfile,wifiIndex,eapType)
 	}
 	if shouldConfigureWired {
-		configureWired(xmlPlistProfile,wiredIndex,eapType,caFileBinary)
+		configureWired(xmlPlistProfile,wiredIndex,eapType)
 	}
 }
 
-func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType uint64,caFileBinary string){
+func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType uint64){
 	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
 	var templateToFile string
 	var elementsToReplaceInTemplate Template
@@ -324,10 +328,8 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 			addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 		}
 		if eapType == EAPTYPE_TLS {
-			caFingerprint, err := getCAFingerprint(caFileBinary)
+			caFingerprint, err := getCAFingerprint(CaFileBinary)
 			if err != nil {
-				os.Remove(caFileBinary)
-				os.Remove("profile.xml")
 				log.Println("Unable to get CA fingerprint: ", err)
 				exit_1()
 			}
@@ -339,7 +341,6 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 				Encryption:      "AES",
 				CaToTrust:       caFingerprint,
 			}
-			os.Remove(caFileBinary)
 			templateToFile, err = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
 			if err != nil {
 				log.Println("Failed executing template: ", err)
@@ -407,7 +408,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 	}
 }
 
-func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapType uint64,caFileBinary string){
+func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapType uint64){
 	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
 	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
 
