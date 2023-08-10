@@ -137,11 +137,6 @@ func Configure() {
 	var wifiIndex int
 	var wiredIndex int
 
-	if TempPATH == "" {
-		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTempPath"), walk.MsgBoxOK)
-		os.Exit(1)
-	}
-
 	// Download mobileconfig file
 	err := writeProfileToLocalFile("profile.xml", PROFILE_URL)
 	if err != nil {
@@ -398,7 +393,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapType uint64,caFileBinary string){
 	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
 	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
-	TempPATH := os.Getenv("tmp")
+
 	profileFile := TempPATH + "\\template-out.xml"
 	dot3svc := exec.Command("net", "start", "dot3svc")
 	dot3svc.Start()
