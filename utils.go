@@ -26,7 +26,7 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 	languageFile, err := os.Create(currentDir + "\\" + languageFileName)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to create the language file, please contact your local support.", walk.MsgBoxOK)
-		log.Fatal("Failed creating language file: ", err)
+		log.Println("Failed creating language file: ", err)
 		return err
 	}
 	// close file
@@ -35,7 +35,7 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 	_, err = io.Copy(languageFile, strings.NewReader(translationLanguage))
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to write into language file, please contact your local support.", walk.MsgBoxOK)
-		log.Fatal("Failed writing language constant to file: ", err)
+		log.Println("Failed writing language constant to file: ", err)
 		return err
 	}
 	log.Print("Language file successfully created.")
@@ -47,19 +47,19 @@ func base64ToPng(BACKGROUND_IMAGE_PF, tempPath string) (error, string) {
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(BACKGROUND_IMAGE_PF))
 	decodeBase64ToPng, _, err := image.Decode(reader)
 	if err != nil {
-		log.Fatal("Unable to decode base 64 background image: ", err)
+		log.Println("Unable to decode base 64 background image: ", err)
 	}
 	//Encode from image format to writer
 	pngFilename := "pf_bg.png"
 	pngFilePath := tempPath + "\\" + pngFilename
 	backgroundFile, err := os.Create(pngFilePath)
 	if err != nil {
-		log.Fatal("Unable to open or create background image: ", err)
+		log.Println("Unable to open or create background image: ", err)
 		return err, pngFilename
 	}
 	err = png.Encode(backgroundFile, decodeBase64ToPng)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		os.Remove(pngFilePath)
 		return err, pngFilename
 	}
@@ -112,7 +112,7 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotParseTemplate"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed parsing: ", err)
+		log.Println("Failed parsing: ", err)
 		return "", err
 	}
 	// executes the template into the open file
@@ -122,14 +122,14 @@ func executeTemplate(nameTemplate, constTemplate string, templateToApply Templat
 		log.Println("Error:  ", err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotExecuteTemplate"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed executing: ", err)
+		log.Println("Failed executing: ", err)
 		return templateBuffer.String(), err
 	}
 	// handles error
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateWLANProfile"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed creating WLANProfile: ", err)
+		log.Println("Failed creating WLANProfile: ", err)
 		return templateBuffer.String(), err
 	}
 	return templateBuffer.String(), nil
@@ -144,7 +144,7 @@ func createProfileFile(templateToFile string) error {
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateProfileFile"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed creating profile file: ", err)
+		log.Println("Failed creating profile file: ", err)
 		return err
 	}
 	// close file
@@ -155,7 +155,7 @@ func createProfileFile(templateToFile string) error {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotWriteIntoProfileFile"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
 		os.Remove(profileFilePath)
-		log.Fatal("Failed writing template to file: ", err)
+		log.Println("Failed writing template to file: ", err)
 		return err
 	}
 	os.Remove("profile.xml")
@@ -170,7 +170,7 @@ func addProfileToMachine(profileFile string, cmd *exec.Cmd, ErrorMessage, Succes
 	if err != nil {
 		log.Printf("Failed adding profile: output: %s\n", output, err)
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), ErrorMessage, walk.MsgBoxOK)
-		log.Fatal("Failed adding profile: ", err, output)
+		log.Println("Failed adding profile: ", err, output)
 		return err
 	} else {
 		walk.MsgBox(windowMsgBox, "Information:", SuccessMessage, walk.MsgBoxOK)
@@ -186,7 +186,7 @@ func createCertTempFile(tempPath, certificate, fileName, fileExtension, alertMes
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotCreateCertTempFile"), walk.MsgBoxOK)
 		// clean up
 		os.Remove("profile.xml")
-		log.Fatal("Failed creating temp file: ", err)
+		log.Println("Failed creating temp file: ", err)
 		return file.Name(), err
 	}
 	certName := file.Name()
@@ -196,21 +196,20 @@ func createCertTempFile(tempPath, certificate, fileName, fileExtension, alertMes
 		// handle error, exit if needed
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotdecodeCertificateFile"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed decoding certificate: ", err)
-		os.Exit(1)
+		log.Println("Failed decoding certificate: ", err)
 		return certName, err
 	}
 	// write into new file
 	if _, err := file.Write(decodedCertificate); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotWriteIntoTempFile"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed writing decoded certificate into temp file: ", err)
+		log.Println("Failed writing decoded certificate into temp file: ", err)
 		return certName, err
 	}
 	if err := file.Close(); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), alertMessage, walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed closing certificate file: ", err)
+		log.Println("Failed closing certificate file: ", err)
 		return certName, err
 	}
 	return certName, nil

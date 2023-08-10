@@ -70,7 +70,8 @@ func main() {
 	TempPATH = os.Getenv("tmp")
 	if TempPATH == "" {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("invalidTempPATH"), walk.MsgBoxOK)
-		log.Fatal("Failed found a temporary directory")
+		log.Println("Failed found a temporary directory")
+		os.Exit(1)
 	}
 
 	currentWorkingDirectory, err := os.Executable()
@@ -121,10 +122,10 @@ func main() {
 		},
 	}.Run()); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("errorMainWindow"), walk.MsgBoxOK)
-		log.Fatal("Failed opening main window: ", err)
+		log.Println("Failed opening main window: ", err)
+		os.Remove(TempPATH + "\\" + "pf_bg.png")
 		os.Exit(1)
 	}
-	os.Remove(TempPATH + "\\" + "pf_bg.png")
 	os.Exit(0)
 }
 
@@ -145,7 +146,7 @@ func Configure() {
 	err := writeProfileToLocalFile("profile.xml", PROFILE_URL)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotRetrieveProfileFile"), walk.MsgBoxOK)
-		log.Fatal("Failed loading profile: ", err)
+		log.Println("Failed loading profile: ", err)
 		os.Exit(1)
 	}
 
@@ -154,7 +155,8 @@ func Configure() {
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotReadProfileData"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed reading profile: ", err)
+		log.Println("Failed reading profile: ", err)
+		os.Exit(1)
 	}
 
 	// Decode converted xml profile
@@ -165,7 +167,8 @@ func Configure() {
 	if err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("cannotDecodeProfileFile"), walk.MsgBoxOK)
 		os.Remove("profile.xml")
-		log.Fatal("Failed decoding profile: ", err)
+		log.Println("Failed decoding profile: ", err)
+		os.Exit(1)
 	}
 
 	// Get data from the mobileconfig file
@@ -206,12 +209,12 @@ func Configure() {
 			alertMessage := T("cannotGenerateCertificateFile")
 			userCertDecode, err = createCertTempFile(TempPATH, userCert, userAuth, fileExtension, alertMessage)
 			if err != nil {
-				log.Fatal("Failed creating profile: ", err)
+				log.Println("Failed creating profile: ", err)
 				os.Exit(1)
 			}
 			err = addCertToMachine(userCertDecode, CERTUTIL_PROGRAM_PATH)
 			if err != nil {
-				log.Fatal("Failed adding Cert: ", err)
+				log.Println("Failed adding Cert: ", err)
 				os.Exit(1)
 			}
 		// Certificate of Authority configuration
@@ -223,12 +226,12 @@ func Configure() {
 				alertMessage := T("cannotGenerateCAFile")
 				caFileBinary, err = createCertTempFile(TempPATH, caCert, caName, fileExtension, alertMessage)
 				if err != nil {
-					log.Fatal("Failed creating profile: ", err)
+					log.Println("Failed creating profile: ", err)
 					os.Exit(1)
 				}
 				err = addCAToMachine(caFileBinary, CERTUTIL_PROGRAM_PATH)
 				if err != nil {
-					log.Fatal("Failed adding CA: ", err)
+					log.Println("Failed adding CA: ", err)
 					os.Exit(1)
 				}
 			}
@@ -236,7 +239,7 @@ func Configure() {
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("Unexpected PayloadType {{.PayloadType}} please contact your local support.", map[string]interface{}{
 				"PayloadType": payloadType,
 			}), walk.MsgBoxOK)
-			log.Fatal("Unexpected PayloadType: ", payloadType)
+			log.Println("Unexpected PayloadType: ", payloadType)
 			os.Exit(1)
 		}
 	}
@@ -296,13 +299,13 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 			// executes the template
 			templateToFile, err := executeTemplate(WIFI_PEAP_TEMPLATE_NAME, WIFI_PEAP_TEMPLATE, elementsToReplaceInTemplate)
 			if err != nil {
-				log.Fatal("Failed executing template: ", err)
+				log.Println("Failed executing template: ", err)
 				os.Exit(1)
 			}
 			// creates profile file with the executed template
 			err = createProfileFile(templateToFile)
 			if err != nil {
-				log.Fatal("Failed creating profile file: ", err)
+				log.Println("Failed creating profile file: ", err)
 				os.Exit(1)
 			}
 			// adds the new profile to Windows with netsh command
@@ -313,7 +316,8 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 			if err != nil {
 				os.Remove(caFileBinary)
 				os.Remove("profile.xml")
-				log.Fatal("Unable to get CA fingerprint: ", err)
+				log.Println("Unable to get CA fingerprint: ", err)
+				os.Exit(1)
 			}
 			elementsToReplaceInTemplate = Template{
 				ProfileName:     ssidString,
@@ -326,12 +330,12 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 			os.Remove(caFileBinary)
 			templateToFile, err = executeTemplate(WIFI_TLS_TEMPLATE_NAME, WIFI_TLS_TEMPLATE, elementsToReplaceInTemplate)
 			if err != nil {
-				log.Fatal("Failed executing template: ", err)
+				log.Println("Failed executing template: ", err)
 				os.Exit(1)
 			}
 			err = createProfileFile(templateToFile)
 			if err != nil {
-				log.Fatal("Failed creating profile file: ", err)
+				log.Println("Failed creating profile file: ", err)
 				os.Exit(1)
 			}
 			addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
@@ -339,7 +343,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 		if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 			// error handling
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
-			log.Fatal("Incorrect EAP type: ", eapType)
+			log.Println("Incorrect EAP type: ", eapType)
 			os.Exit(1)
 		}
 	} else {
@@ -379,12 +383,12 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 		}
 		templateToFile, err := executeTemplate(WIFI_OPEN_TEMPLATE_NAME, WIFI_OPEN_TEMPLATE, elementsToReplaceInTemplate)
 		if err != nil {
-			log.Fatal("Failed executing template: ", err)
+			log.Println("Failed executing template: ", err)
 			os.Exit(1)
 		}
 		err = createProfileFile(templateToFile)
 		if err != nil {
-			log.Fatal("Failed creating profile file: ", err)
+			log.Println("Failed creating profile file: ", err)
 			os.Exit(1)
 		}
 		addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
@@ -416,7 +420,7 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapTy
 	if eapType == EAPTYPE_PEAP {
 		err := createProfileFile(WIRED_PEAP_TEMPLATE)
 		if err != nil {
-			log.Fatal("Failed creating profile file: ", err)
+			log.Println("Failed creating profile file: ", err)
 			os.Exit(1)
 		}
 		addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
@@ -424,7 +428,7 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapTy
 	if eapType == EAPTYPE_TLS {
 		err := createProfileFile(WIRED_TLS_TEMPLATE)
 		if err != nil {
-			log.Fatal("Failed creating profile file: ", err)
+			log.Println("Failed creating profile file: ", err)
 			os.Exit(1)
 		}
 		addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
@@ -432,7 +436,7 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapTy
 	if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 		// error handling
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
-		log.Fatal("Incorrect EAP type: ", eapType)
+		log.Println("Incorrect EAP type: ", eapType)
 		os.Exit(1)
 	}
 }
