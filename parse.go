@@ -39,11 +39,13 @@ const SUBLANG_FRENCH_BELGIAN = 2060
 const SUBLANG_FRENCH_LUXEMBOURG = 5132
 const SUBLANG_FRENCH_MONACO = 6156
 const SUBLANG_FRENCH_SWISS = 4108
+const PNG_FILENAME = "pf_bg.png"
 
 var T i18n.TranslateFunc
 
 var windowMsgBox walk.Form
 
+// FilePaths
 var TempPATH string
 var ProfileDownloaded string
 var ProfileTemplated string
@@ -62,6 +64,7 @@ type Template struct {
 }
 type Handle uintptr
 
+// Clean created files
 func clean_files() {
 	if CaFileBinary != "" {
 		os.Remove(CaFileBinary)
@@ -77,12 +80,14 @@ func clean_files() {
 	}
 }
 
+// Exit with error
 func exit_1() {
 	clean_files()
 	os.Exit(1)
 }
 
 func main() {
+	// Need to add debug
 	hideConsole()
 
 	log.Println("==================== PacketFence Provisioning Agent ===================")
@@ -94,13 +99,6 @@ func main() {
 		log.Println("Failed found a temporary directory")
 		exit_1()
 	}
-
-	currentWorkingDirectory, err := os.Executable()
-	if err != nil {
-		walk.MsgBox(windowMsgBox, "Error", "Unable to get current working directory, please contact your local support.", walk.MsgBoxOK)
-		exit_1()
-	}
-	stableCurrentWorkingDirectory := filepath.Dir(currentWorkingDirectory)
 
 	// Internationalization (i18n)
 	localeInfo := win.GetThreadUILanguage()
@@ -118,8 +116,21 @@ func main() {
 		T, _ = i18n.Tfunc("en")
 	}
 
+	// PNG
+	PngFilePath := TempPATH + "\\"+ PNG_FILENAME
+	err = base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath)
+	if err != nil {
+		exit_1()
+	}
+
+	// Windows Box
+	currentWorkingDirectory, err := os.Executable()
+	if err != nil {
+		walk.MsgBox(windowMsgBox, "Error", "Unable to get current working directory, please contact your local support.", walk.MsgBoxOK)
+		exit_1()
+	}
+	stableCurrentWorkingDirectory := filepath.Dir(currentWorkingDirectory)
 	walk.Resources.SetRootDirPath(TempPATH)
-	_, pfBg := base64ToPng(BACKGROUND_IMAGE_PF, TempPATH)
 	var mw1 *walk.MainWindow
 	if _, err := (MainWindow{
 		AssignTo:   &mw1,
@@ -130,7 +141,7 @@ func main() {
 		Children: []Widget{
 			ImageView{
 				Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
-				Image:      pfBg,
+				Image:      PNG_FILENAME,
 			},
 			PushButton{
 				Background: SolidColorBrush{Color: walk.RGB(4, 5, 3)},
@@ -145,7 +156,6 @@ func main() {
 	}.Run()); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("errorMainWindow"), walk.MsgBoxOK)
 		log.Println("Failed opening main window: ", err)
-		os.Remove(TempPATH + "\\" + "pf_bg.png")
 		exit_1()
 	}
 	clean_files()

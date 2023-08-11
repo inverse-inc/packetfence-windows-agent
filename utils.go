@@ -43,29 +43,27 @@ func createLanguageFile(currentDir, translationLanguage, languageFileName string
 }
 
 // Converts base 64 background image to pf_bg.png
-func base64ToPng(BACKGROUND_IMAGE_PF, tempPath string) (error, string) {
+func base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath string) error {
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(BACKGROUND_IMAGE_PF))
 	decodeBase64ToPng, _, err := image.Decode(reader)
 	if err != nil {
 		log.Println("Unable to decode base 64 background image: ", err)
+		return err
 	}
 	//Encode from image format to writer
-	pngFilename := "pf_bg.png"
-	pngFilePath := tempPath + "\\" + pngFilename
-	backgroundFile, err := os.Create(pngFilePath)
+	backgroundFile, err := os.Create(PngFilePath)
+	defer backgroundFile.Close()
 	if err != nil {
 		log.Println("Unable to open or create background image: ", err)
-		return err, pngFilename
+		return err
 	}
 	err = png.Encode(backgroundFile, decodeBase64ToPng)
 	if err != nil {
-		log.Println(err)
-		os.Remove(pngFilePath)
-		return err, pngFilename
+		log.Println("Unable to encode background image: ", err)
+		return err
 	}
-	log.Println("PNG file", pngFilename, "successfully created.")
-	backgroundFile.Close()
-	return nil, pngFilename
+	log.Println("Background PNG file successfully created.")
+	return nil
 }
 
 // Decode base64 certificate to string
@@ -81,10 +79,10 @@ func decodeCertificate(certificate string) ([]byte, error) {
 func writeProfileToLocalFile(filepath string, url string) error {
 	// Create the file
 	out, err := os.Create(filepath)
+	defer out.Close()
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 	// Avoid certificate check
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -92,10 +90,10 @@ func writeProfileToLocalFile(filepath string, url string) error {
 	cli := &http.Client{Transport: tr}
 	// Get the data
 	resp, err := cli.Get(url)
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
