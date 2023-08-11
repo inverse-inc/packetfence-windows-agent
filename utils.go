@@ -51,11 +51,11 @@ func base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath string) error {
 	}
 	//Encode from image format to writer
 	backgroundFile, err := os.Create(PngFilePath)
-	defer backgroundFile.Close()
 	if err != nil {
 		log.Println("Unable to open or create background image: ", err)
 		return err
 	}
+	defer backgroundFile.Close()
 	err = png.Encode(backgroundFile, decodeBase64ToPng)
 	if err != nil {
 		log.Println("Unable to encode background image: ", err)
@@ -76,12 +76,7 @@ func decodeCertificate(certificate string) ([]byte, error) {
 
 // Get mobileconfig file and write to local file
 func writeProfileToLocalFile(filepath string, url string) error {
-	// Create the file
-	out, err := os.Create(filepath)
-	defer out.Close()
-	if err != nil {
-		return err
-	}
+	var err error
 	// Avoid certificate check
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -89,16 +84,22 @@ func writeProfileToLocalFile(filepath string, url string) error {
 	cli := &http.Client{Transport: tr}
 	// Get the data
 	resp, err := cli.Get(url)
-	defer resp.Body.Close()
 	if err != nil {
-		return err
+		log.Println("Failed to get Downloaded Profile File: ", err)
+	} else {
+		log.Println("Get Downloaded Profile File: ")
+		out, err := os.Create(filepath)
+		if err != nil {
+			log.Println("Failed to create Downloaded Profile File: ", err)
+		} else {
+			_, err := io.Copy(out, resp.Body)
+			if err != nil {
+				log.Println("Failed to copy Downloaded Profile File: ", err)
+			}
+		defer out.Close()
+		}
 	}
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Create, parse and execute templates
