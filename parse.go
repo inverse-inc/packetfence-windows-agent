@@ -38,7 +38,10 @@ const SUBLANG_FRENCH_BELGIAN = 2060
 const SUBLANG_FRENCH_LUXEMBOURG = 5132
 const SUBLANG_FRENCH_MONACO = 6156
 const SUBLANG_FRENCH_SWISS = 4108
+
+// File const
 const PNG_FILENAME = "pf_bg.png"
+const LOG_FILE = "packetfence-windows-agent-log.log"
 
 var T i18n.TranslateFunc
 
@@ -51,6 +54,7 @@ var ProfileTemplated string
 var PngFilePath string
 var CaFileBinary string
 var CertFilePath string
+var err error
 
 type Template struct {
 	ProfileName     string // replace by SSIDString
@@ -93,6 +97,14 @@ func main() {
 	// Need to add debug
 	hideConsole()
 
+	logFile, err := os.OpenFile(LOG_FILE, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	if err != nil {
+		log.Println("Can not open file: %v", err)
+		exit_1()
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	log.Println("==================== PacketFence Provisioning Agent ===================")
 
 	// Set temp directory
@@ -121,7 +133,7 @@ func main() {
 
 	// PNG
 	PngFilePath := TempPATH + "\\"+ PNG_FILENAME
-	err := base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath)
+	err = base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath)
 	if err != nil {
 		exit_1()
 	}
