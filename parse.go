@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"io/ioutil"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
@@ -51,6 +50,7 @@ var ProfileDownloaded string
 var ProfileTemplated string
 var PngFilePath string
 var CaFileBinary string
+var CertFilePath string
 
 type Template struct {
 	ProfileName     string // replace by SSIDString
@@ -66,6 +66,9 @@ type Handle uintptr
 
 // Clean created files
 func clean_files() {
+	if CertFilePath != "" {
+		os.Remove(CertFilePath)
+	}
 	if CaFileBinary != "" {
 		os.Remove(CaFileBinary)
 	}
@@ -106,30 +109,24 @@ func main() {
 	switch localeInfo {
 	case SUBLANG_FRENCH, SUBLANG_FRENCH_CANADIAN, SUBLANG_FRENCH_BELGIAN, SUBLANG_FRENCH_LUXEMBOURG, SUBLANG_FRENCH_MONACO, SUBLANG_FRENCH_SWISS:
 		languageFileName := "fr.json"
-		createLanguageFile(stableCurrentWorkingDirectory, FRENCH_TRANSLATION, languageFileName)
+		createLanguageFile(TempPATH, FRENCH_TRANSLATION, languageFileName)
 		i18n.MustLoadTranslationFile(languageFileName)
 		T, _ = i18n.Tfunc("fr")
 	default:
 		languageFileName := "en.json"
-		createLanguageFile(stableCurrentWorkingDirectory, ENGLISH_TRANSLATION, languageFileName)
+		createLanguageFile(TempPATH, ENGLISH_TRANSLATION, languageFileName)
 		i18n.MustLoadTranslationFile(languageFileName)
 		T, _ = i18n.Tfunc("en")
 	}
 
 	// PNG
 	PngFilePath := TempPATH + "\\"+ PNG_FILENAME
-	err = base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath)
+	err := base64ToPng(BACKGROUND_IMAGE_PF, PngFilePath)
 	if err != nil {
 		exit_1()
 	}
 
 	// Windows Box
-	currentWorkingDirectory, err := os.Executable()
-	if err != nil {
-		walk.MsgBox(windowMsgBox, "Error", "Unable to get current working directory, please contact your local support.", walk.MsgBoxOK)
-		exit_1()
-	}
-	stableCurrentWorkingDirectory := filepath.Dir(currentWorkingDirectory)
 	walk.Resources.SetRootDirPath(TempPATH)
 	var mw1 *walk.MainWindow
 	if _, err := (MainWindow{
@@ -233,7 +230,8 @@ func Configure() {
 			userAuth := "certificate"
 			fileExtension := ".p12"
 			alertMessage := T("cannotGenerateCertificateFile")
-			userCertDecode, err = createCertTempFile(TempPATH, userCert, userAuth, fileExtension, alertMessage)
+			CertFilePath = TempPATH+"\\"+userAuth+""+fileExtension
+			err := createCertTempFile(CertFilePath, userCert, alertMessage)
 			if err != nil {
 				log.Println("Failed creating profile: ", err)
 				exit_1()
@@ -246,11 +244,12 @@ func Configure() {
 		// Certificate of Authority configuration
 		case "com.apple.security.root":
 			if eapType == EAPTYPE_TLS {
-				caName := payloadContent["PayloadCertificateFileName"].(string)
 				caCert := payloadContent["PayloadContent"].(string)
+				caName := payloadContent["PayloadCertificateFileName"].(string)
 				fileExtension := ".cer"
 				alertMessage := T("cannotGenerateCAFile")
-				CaFileBinary, err = createCertTempFile(TempPATH, caCert, caName, fileExtension, alertMessage)
+				CaFileBinary = TempPATH+"\\"+caName+""+fileExtension
+				err := createCertTempFile(CaFileBinary, caCert, alertMessage)
 				if err != nil {
 					log.Println("Failed creating profile: ", err)
 					exit_1()
@@ -284,7 +283,8 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 	var elementsToReplaceInTemplate Template
 	var wifiKey string
 
-	profileFile := TempPATH + "\\template-out.xml"
+	ProfileTemplated = TempPATH + "\\template-out.xml"
+
 	// Get SSID information
 	payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wifiIndex].(map[string]interface{})
 	ssidString := payloadContent["SSID_STR"].(string)
@@ -295,7 +295,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 		securityType = "open"
 	}
 
-	addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+profileFile, "user=all")
+	addWLANProfileCommand := exec.Command("netsh", "wlan", "add", "profile", "filename="+ProfileTemplated, "user=all")
 	wlanSuccessMessage := T("The wireless profile was successfully added to the machine. \nPlease select your newly added profile {{.SsidString}} in the WiFi networks.", map[string]interface{}{
 		"SsidString": ssidString,
 	})
@@ -329,13 +329,11 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 				exit_1()
 			}
 			// creates profile file with the executed template
-			err = createProfileFile(templateToFile)
+			err = createProfileFile(ProfileTemplated,templateToFile)
 			if err != nil {
 				log.Println("Failed creating profile file: ", err)
 				exit_1()
 			}
-			// adds the new profile to Windows with netsh command
-			addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 		}
 		if eapType == EAPTYPE_TLS {
 			caFingerprint, err := getCAFingerprint(CaFileBinary)
@@ -356,17 +354,22 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 				log.Println("Failed executing template: ", err)
 				exit_1()
 			}
-			err = createProfileFile(templateToFile)
+			err = createProfileFile(ProfileTemplated,templateToFile)
 			if err != nil {
 				log.Println("Failed creating profile file: ", err)
 				exit_1()
 			}
-			addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
 		}
 		if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 			// error handling
 			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
 			log.Println("Incorrect EAP type: ", eapType)
+			exit_1()
+		}
+		// adds the new profile to Windows with netsh command
+		err := addProfileToMachine(ProfileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+		if err != nil {
+			log.Println("Failed to add profile file: ", err)
 			exit_1()
 		}
 	} else {
@@ -409,12 +412,17 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 			log.Println("Failed executing template: ", err)
 			exit_1()
 		}
-		err = createProfileFile(templateToFile)
+		err = createProfileFile(ProfileTemplated,templateToFile)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			exit_1()
 		}
-		addProfileToMachine(profileFile, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+		// adds the new profile to Windows with netsh command
+		err = addProfileToMachine(ProfileTemplated, addWLANProfileCommand, WLAN_ERROR_MESSAGE, wlanSuccessMessage)
+		if err != nil {
+			log.Println("Failed to add profile file: ", err)
+			exit_1()
+		}
 	}
 }
 
@@ -422,7 +430,7 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapTy
 	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
 	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
 
-	profileFile := TempPATH + "\\template-out.xml"
+	ProfileTemplated = TempPATH + "\\template-out.xml"
 	dot3svc := exec.Command("net", "start", "dot3svc")
 	dot3svc.Start()
 	if err := dot3svc.Wait(); err != nil {
@@ -436,30 +444,33 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapTy
 			}
 		}
 	}
-	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+profileFile)
 	payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wiredIndex].(map[string]interface{})
 	eapClientConfiguration := payloadContent["EAPClientConfiguration"].(map[string]interface{})
 	eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 	if eapType == EAPTYPE_PEAP {
-		err := createProfileFile(WIRED_PEAP_TEMPLATE)
+		err := createProfileFile(ProfileTemplated,WIRED_PEAP_TEMPLATE)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			exit_1()
 		}
-		addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 	}
 	if eapType == EAPTYPE_TLS {
-		err := createProfileFile(WIRED_TLS_TEMPLATE)
+		err := createProfileFile(ProfileTemplated,WIRED_TLS_TEMPLATE)
 		if err != nil {
 			log.Println("Failed creating profile file: ", err)
 			exit_1()
 		}
-		addProfileToMachine(profileFile, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
 	}
 	if (eapType != EAPTYPE_TLS) && (eapType != EAPTYPE_PEAP) {
 		// error handling
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("unexpectedEAPType"), walk.MsgBoxOK)
 		log.Println("Incorrect EAP type: ", eapType)
+		exit_1()
+	}
+	wiredNetshCommand := exec.Command("netsh", "lan", "add", "profile", "filename="+ProfileTemplated)
+	err := addProfileToMachine(ProfileTemplated, wiredNetshCommand, WIRED_ERROR_MESSAGE, WIRED_SUCCESS_MESSAGE)
+	if err != nil {
+		log.Println("Failed to add profile file: ", err)
 		exit_1()
 	}
 }
