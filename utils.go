@@ -20,9 +20,9 @@ import (
 )
 
 // Create and write profile file into templateToFile folder
-func createLanguageFile(currentDir, translationLanguage, languageFileName string) error {
+func createLanguageFile(translationLanguage, langpath string) error {
 	// create and open file
-	languageFile, err := os.Create(currentDir + "\\" + languageFileName)
+	languageFile, err := os.Create(langpath)
 	if err != nil {
 		walk.MsgBox(windowMsgBox, "Error", "Unable to create the language file, please contact your local support.", walk.MsgBoxOK)
 		log.Println("Failed creating language file: ", err)

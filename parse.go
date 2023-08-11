@@ -51,6 +51,7 @@ var PayloadContent (map[string]interface{})
 
 // FilePaths
 var TempPATH string
+var LangPATH string
 var ProfileDownloaded string
 var ProfileTemplated string
 var PngFilePath string
@@ -72,6 +73,9 @@ type Handle uintptr
 
 // Clean created files
 func clean_files() {
+	if LangPATH != "" {
+		os.Remove(LangPATH)
+	}
 	if CertFilePath != "" {
 		os.Remove(CertFilePath)
 	}
@@ -122,14 +126,14 @@ func main() {
 	log.Printf("User's locale is: %#x", localeInfo)
 	switch localeInfo {
 	case SUBLANG_FRENCH, SUBLANG_FRENCH_CANADIAN, SUBLANG_FRENCH_BELGIAN, SUBLANG_FRENCH_LUXEMBOURG, SUBLANG_FRENCH_MONACO, SUBLANG_FRENCH_SWISS:
-		languageFileName := "fr.json"
-		createLanguageFile(TempPATH, FRENCH_TRANSLATION, languageFileName)
-		i18n.MustLoadTranslationFile(languageFileName)
+		LangPATH = TempPATH+"\\fr.json"
+		createLanguageFile(FRENCH_TRANSLATION, LangPATH)
+		i18n.MustLoadTranslationFile(LangPATH)
 		T, _ = i18n.Tfunc("fr")
 	default:
-		languageFileName := "en.json"
-		createLanguageFile(TempPATH, ENGLISH_TRANSLATION, languageFileName)
-		i18n.MustLoadTranslationFile(languageFileName)
+		LangPATH = TempPATH+"\\en.json"
+		createLanguageFile(ENGLISH_TRANSLATION, LangPATH)
+		i18n.MustLoadTranslationFile(LangPATH)
 		T, _ = i18n.Tfunc("en")
 	}
 
