@@ -146,26 +146,26 @@ func main() {
 				Text:       "Configure",
 				OnClicked: func() {
 					Configure()
-					mw1.Close()
 				},
 			},
 		},
 	}.Run()); err != nil {
 		walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("errorMainWindow"), walk.MsgBoxOK)
 		log.Println("Failed opening main window: ", err)
+		mw1.Close()
 		exit_1()
 	}
 	clean_files()
+	mw1.Close()
 	os.Exit(0)
 }
 
 func Configure() {
-	var xmlPlistProfile map[string]interface{}
-	var eapType uint64
-	var userCertDecode string
-	var wifiIndex int
-	var wiredIndex int
+	downloadProfile()
+	extractProfile()
+}
 
+func downloadProfile(){
 	ProfileDownloaded = TempPATH + "\\profile.xml"
 	// Download mobileconfig file
 	err := writeProfileToLocalFile(ProfileDownloaded, PROFILE_URL)
@@ -174,6 +174,15 @@ func Configure() {
 		log.Println("Failed loading profile: ", err)
 		exit_1()
 	}
+	log.Printf("Load Profile from PF")
+}
+
+func extractProfile() {
+	var xmlPlistProfile map[string]interface{}
+	var eapType uint64
+	var userCertDecode string
+	var wifiIndex int
+	var wiredIndex int
 
 	// Read xml profile, convert to string
 	data, err := ioutil.ReadFile(ProfileDownloaded)
