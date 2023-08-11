@@ -47,6 +47,8 @@ var T i18n.TranslateFunc
 
 var windowMsgBox walk.Form
 
+var PayloadContent (map[string]interface{})
+
 // FilePaths
 var TempPATH string
 var ProfileDownloaded string
@@ -291,14 +293,16 @@ func extractProfile() {
 	}
 
 	if shouldConfigureWifi {
-		configureWifi(xmlPlistProfile,wifiIndex,eapType)
+		PayloadContent = xmlPlistProfile["PayloadContent"].([]interface{})[wifiIndex].(map[string]interface{})
+		configureWifi(eapType)
 	}
 	if shouldConfigureWired {
-		configureWired(xmlPlistProfile,wiredIndex,eapType)
+		PayloadContent = xmlPlistProfile["PayloadContent"].([]interface{})[wiredIndex].(map[string]interface{})
+		configureWired(eapType)
 	}
 }
 
-func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType uint64){
+func configureWifi(eapType uint64){
 	var WLAN_ERROR_MESSAGE = T("wlanErrorMessage")
 	var templateToFile string
 	var elementsToReplaceInTemplate Template
@@ -307,11 +311,10 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 	ProfileTemplated = TempPATH + "\\template-out.xml"
 
 	// Get SSID information
-	payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wifiIndex].(map[string]interface{})
-	ssidString := payloadContent["SSID_STR"].(string)
+	ssidString := PayloadContent["SSID_STR"].(string)
 	ssidStringToHex := hex.EncodeToString([]byte(ssidString))
-	ssidBroadcast := payloadContent["HIDDEN_NETWORK"].(bool)
-	securityType := payloadContent["EncryptionType"].(string)
+	ssidBroadcast := PayloadContent["HIDDEN_NETWORK"].(bool)
+	securityType := PayloadContent["EncryptionType"].(string)
 	if securityType == "None" {
 		securityType = "open"
 	}
@@ -322,7 +325,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 	})
 
 	// Security of the SSID
-	eapClientConfiguration, ok := payloadContent["EAPClientConfiguration"].(map[string]interface{})
+	eapClientConfiguration, ok := PayloadContent["EAPClientConfiguration"].(map[string]interface{})
 	if ok {
 		eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 		userAuth, ok := eapClientConfiguration["UserName"].(string)
@@ -394,7 +397,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 			exit_1()
 		}
 	} else {
-		wifiKey = payloadContent["Password"].(string)
+		wifiKey = PayloadContent["Password"].(string)
 		log.Println("Security type: ", securityType)
 		switch securityType {
 		case "WEP":
@@ -447,7 +450,7 @@ func configureWifi(xmlPlistProfile map[string]interface{}, wifiIndex int,eapType
 	}
 }
 
-func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapType uint64){
+func configureWired(eapType uint64){
 	var WIRED_ERROR_MESSAGE = T("wiredErrorMessage")
 	var WIRED_SUCCESS_MESSAGE = T("wiredSuccessMessage")
 
@@ -465,8 +468,7 @@ func configureWired(xmlPlistProfile map[string]interface{}, wiredIndex int,eapTy
 			}
 		}
 	}
-	payloadContent := xmlPlistProfile["PayloadContent"].([]interface{})[wiredIndex].(map[string]interface{})
-	eapClientConfiguration := payloadContent["EAPClientConfiguration"].(map[string]interface{})
+	eapClientConfiguration := PayloadContent["EAPClientConfiguration"].(map[string]interface{})
 	eapType = eapClientConfiguration["AcceptEAPTypes"].([]interface{})[0].(uint64)
 	if eapType == EAPTYPE_PEAP {
 		err := createProfileFile(ProfileTemplated,WIRED_PEAP_TEMPLATE)
