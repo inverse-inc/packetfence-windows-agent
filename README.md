@@ -80,6 +80,10 @@ In the directory containing `parse.go`, run :
 
 	go build
 
+For debugging you can test
+
+	go build -ldflags="-H windowsgui
+
 NOTE: To have the cmd window, you need to comment the `hideConsole()` line in parse.go, and then build normally
 
 ##### Cross compiling for 32-bit
