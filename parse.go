@@ -288,11 +288,7 @@ func extractProfile() {
 				}
 			}
 		default:
-			walk.MsgBox(windowMsgBox, T("errorWindowTitle"), T("Unexpected PayloadType {{.PayloadType}} please contact your local support.", map[string]interface{}{
-				"PayloadType": payloadType,
-			}), walk.MsgBoxOK)
 			log.Println("Unexpected PayloadType: ", payloadType)
-			exit_1()
 		}
 	}
 
